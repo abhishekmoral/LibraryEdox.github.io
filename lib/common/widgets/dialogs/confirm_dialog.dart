@@ -1,0 +1,54 @@
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:edox_library/utils/constants/colors.dart';
+import 'package:edox_library/utils/constants/sizes.dart';
+import 'package:edox_library/common/widgets/buttons/primary_button.dart';
+import 'package:edox_library/common/widgets/buttons/outline_button.dart';
+
+/// Confirmation dialog.
+class XConfirmDialog {
+  XConfirmDialog._();
+
+  static void show({
+    required String title,
+    required String message,
+    required VoidCallback onConfirm,
+    String confirmText = 'Yes',
+    String cancelText = 'No',
+    Color? confirmColor,
+  }) {
+    Get.dialog(
+      AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(XSizes.cardRadiusLg),
+        ),
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          XOutlineButton(
+            text: cancelText,
+            width: 100,
+            onPressed: () => Get.back(),
+          ),
+          const SizedBox(width: XSizes.sm),
+          SizedBox(
+            width: 100,
+            height: XSizes.buttonHeight,
+            child: ElevatedButton(
+              onPressed: () {
+                Get.back();
+                onConfirm();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: confirmColor ?? XColors.primary,
+              ),
+              child: Text(confirmText),
+            ),
+          ),
+        ],
+        actionsAlignment: MainAxisAlignment.end,
+        actionsPadding: const EdgeInsets.all(XSizes.md),
+      ),
+    );
+  }
+}
