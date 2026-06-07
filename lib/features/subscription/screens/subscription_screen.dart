@@ -7,12 +7,16 @@ import 'package:edox_library/utils/helpers/helper_function.dart';
 import 'package:edox_library/common/widgets/appbar/appbar.dart';
 import 'package:edox_library/common/widgets/buttons/primary_button.dart';
 
+import 'package:edox_library/features/subscription/controllers/razorpay_controller.dart';
+
 class SubscriptionScreen extends StatelessWidget {
   const SubscriptionScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     final dark = XHelperFunctions.isDarkMode(context);
+    // Initialize the Razorpay Controller
+    Get.put(RazorpayController());
 
     return Scaffold(
       appBar: const XAppBar(title: Text('Subscription')),
@@ -60,7 +64,7 @@ class SubscriptionScreen extends StatelessWidget {
               features: ['Up to 50 seats', 'Up to 100 members', 'WhatsApp reminders', 'Basic reports'],
               color: XColors.accent,
               dark: dark,
-              onSelect: () => Get.snackbar('Upgrade', 'Basic plan selected!', snackPosition: SnackPosition.BOTTOM, backgroundColor: XColors.accent, colorText: XColors.white),
+              onSelect: () => RazorpayController.instance.openCheckout('Basic', 499.0),
             ),
             const SizedBox(height: XSizes.spaceBtwItems),
 
@@ -71,7 +75,7 @@ class SubscriptionScreen extends StatelessWidget {
               color: XColors.primary,
               dark: dark,
               recommended: true,
-              onSelect: () => Get.snackbar('Upgrade', 'Premium plan selected!', snackPosition: SnackPosition.BOTTOM, backgroundColor: XColors.primary, colorText: XColors.white),
+              onSelect: () => RazorpayController.instance.openCheckout('Premium', 999.0),
             ),
             const SizedBox(height: XSizes.spaceBtwSections),
           ],

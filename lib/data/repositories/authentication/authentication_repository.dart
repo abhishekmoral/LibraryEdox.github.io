@@ -60,4 +60,13 @@ class AuthenticationRepository extends GetxController {
       throw 'An unexpected error occurred. Please try again.';
     }
   }
+  Future<void> sendPasswordResetEmail(String email) async {
+    try {
+      await _auth.sendPasswordResetEmail(email: email);
+    } on FirebaseAuthException catch (e) {
+      throw e.message ?? 'Failed to send password reset email.';
+    } catch (e) {
+      throw 'An unexpected error occurred. Please try again.';
+    }
+  }
 }

@@ -153,9 +153,43 @@ class SettingsScreen extends StatelessWidget {
                 title: 'Account',
                 dark: dark,
                 children: [
-                  _SettingsTile(icon: Iconsax.password_check, title: 'Change Password', subtitle: 'Update your password', dark: dark, onTap: () {}),
-                  _SettingsTile(icon: Iconsax.cloud, title: 'Backup', subtitle: 'Cloud backup your data', dark: dark, onTap: () {}),
-                  _SettingsTile(icon: Iconsax.crown_1, title: 'Subscription', subtitle: 'Trial Plan - 30 days remaining', dark: dark, onTap: () => Get.toNamed('/subscription')),
+                  _SettingsTile(
+                    icon: Iconsax.password_check, 
+                    title: 'Change Password', 
+                    subtitle: 'Send a password reset email', 
+                    dark: dark, 
+                    onTap: () async {
+                      try {
+                        final email = AuthenticationRepository.instance.authUser.value?.email;
+                        if (email != null && email.isNotEmpty) {
+                          await AuthenticationRepository.instance.sendPasswordResetEmail(email);
+                          XHelperFunctions.showSnackBar('Password Reset Email Sent! Check your inbox.');
+                        } else {
+                          XHelperFunctions.showSnackBar('Error: No email associated with this account.', isError: true);
+                        }
+                      } catch (e) {
+                        XHelperFunctions.showSnackBar('Error: ${e.toString()}', isError: true);
+                      }
+                    }
+                  ),
+                  _SettingsTile(
+                    icon: Iconsax.cloud, 
+                    title: 'Backup', 
+                    subtitle: 'Cloud backup your data', 
+                    dark: dark, 
+                    onTap: () {
+                      XHelperFunctions.showSnackBar(
+                        'Cloud Sync Active: Your library data is automatically backed up and synced to the cloud in real-time!'
+                      );
+                    }
+                  ),
+                  _SettingsTile(
+                    icon: Iconsax.crown_1, 
+                    title: 'Subscription', 
+                    subtitle: 'Trial Plan - 30 days remaining', 
+                    dark: dark, 
+                    onTap: () => Get.toNamed('/subscription')
+                  ),
                 ],
               ),
               const SizedBox(height: XSizes.spaceBtwItems),
