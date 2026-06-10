@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "255778525123",
+    "project_id": "edoxlibrary",
+    "storage_bucket": "edoxlibrary.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:255778525123:android:27b3343284352f26e0b776",
+        "android_client_info": {
+          "package_name": "com.edox.library"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "255778525123-r72ijmht3kn80tvch60tdbrdqhq07gan.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDfiw0ge9jNUDQW3d4V18K-UXP28IqhfnM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "255778525123-r72ijmht3kn80tvch60tdbrdqhq07gan.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "255778525123-as8kl7cv90jniiquuj74g84ndebgfn1d.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.edox.library"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
