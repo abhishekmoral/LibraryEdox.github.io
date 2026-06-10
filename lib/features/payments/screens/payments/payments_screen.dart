@@ -1,25 +1,36 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:edox_library/utils/constants/colors.dart';
 import 'package:edox_library/utils/constants/sizes.dart';
 import 'package:edox_library/utils/helpers/helper_function.dart';
 import 'package:edox_library/common/widgets/appbar/appbar.dart';
-import 'package:edox_library/common/widgets/texts/section_heading.dart';
 import 'package:edox_library/features/payments/screens/collect_payment/collect_payment_screen.dart';
 
-class PaymentsScreen extends StatelessWidget {
+class PaymentsScreen extends StatefulWidget {
   const PaymentsScreen({super.key});
+
+  @override
+  State<PaymentsScreen> createState() => _PaymentsScreenState();
+}
+
+class _PaymentsScreenState extends State<PaymentsScreen> {
+  int _selectedTab = 0;
+  final List<Map<String, String>> _allPayments = _getMockPayments();
 
   @override
   Widget build(BuildContext context) {
     final dark = XHelperFunctions.isDarkMode(context);
-    final selectedTab = 0.obs;
-    final payments = _getMockPayments();
+
+    // Filter payments based on selected tab index (0 = All, 1 = Paid, 2 = Pending)
+    final filteredPayments = _allPayments.where((p) {
+      if (_selectedTab == 0) return true;
+      if (_selectedTab == 1) return p['status'] == 'Paid';
+      return p['status'] == 'Pending';
+    }).toList();
 
     return Scaffold(
-      appBar: XAppBar(
-        title: const Text('Payments'),
+      appBar: const XAppBar(
+        title: Text('Payments'),
         showBackArrow: true,
       ),
       body: Column(
@@ -35,11 +46,11 @@ class PaymentsScreen extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _PayStat(label: 'Today', value: '₹4,500', icon: Iconsax.calendar_1),
+                const _PayStat(label: 'Today', value: '₹4,500', icon: Iconsax.calendar_1),
                 Container(width: 1, height: 36, color: XColors.white.withValues(alpha: 0.3)),
-                _PayStat(label: 'This Month', value: '₹67,500', icon: Iconsax.chart),
+                const _PayStat(label: 'This Month', value: '₹67,500', icon: Iconsax.chart),
                 Container(width: 1, height: 36, color: XColors.white.withValues(alpha: 0.3)),
-                _PayStat(label: 'Pending', value: '₹9,000', icon: Iconsax.warning_2),
+                const _PayStat(label: 'Pending', value: '₹9,000', icon: Iconsax.warning_2),
               ],
             ),
           ),
@@ -47,13 +58,13 @@ class PaymentsScreen extends StatelessWidget {
           /// --- Tab Filters
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: XSizes.defaultSpace),
-            child: Obx(() => Row(
+            child: Row(
               children: List.generate(3, (i) {
                 final tabs = ['All', 'Paid', 'Pending'];
-                final selected = selectedTab.value == i;
+                final selected = _selectedTab == i;
                 return Expanded(
                   child: GestureDetector(
-                    onTap: () => selectedTab.value = i,
+                    onTap: () => setState(() => _selectedTab = i),
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 10),
                       decoration: BoxDecoration(
@@ -71,7 +82,7 @@ class PaymentsScreen extends StatelessWidget {
                   ),
                 );
               }),
-            )),
+            ),
           ),
           const SizedBox(height: XSizes.spaceBtwItems),
 
@@ -79,10 +90,10 @@ class PaymentsScreen extends StatelessWidget {
           Expanded(
             child: ListView.separated(
               padding: const EdgeInsets.symmetric(horizontal: XSizes.defaultSpace),
-              itemCount: payments.length,
+              itemCount: filteredPayments.length,
               separatorBuilder: (_, __) => const SizedBox(height: XSizes.sm + 2),
               itemBuilder: (context, index) {
-                final p = payments[index];
+                final p = filteredPayments[index];
                 return _PaymentTile(payment: p, dark: dark);
               },
             ),
@@ -90,7 +101,12 @@ class PaymentsScreen extends StatelessWidget {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => Get.to(() => const CollectPaymentScreen()),
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const CollectPaymentScreen()),
+          );
+        },
         backgroundColor: XColors.primary,
         icon: const Icon(Iconsax.money_recive, color: XColors.white),
         label: const Text('Collect Fee', style: TextStyle(color: XColors.white, fontWeight: FontWeight.w600)),

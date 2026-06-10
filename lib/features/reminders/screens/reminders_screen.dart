@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:edox_library/utils/constants/colors.dart';
 import 'package:edox_library/utils/constants/sizes.dart';
 import 'package:edox_library/utils/helpers/helper_function.dart';
 import 'package:edox_library/common/widgets/appbar/appbar.dart';
-import 'package:edox_library/common/widgets/buttons/primary_button.dart';
 
 class RemindersScreen extends StatelessWidget {
   const RemindersScreen({super.key});
@@ -40,7 +38,7 @@ class RemindersScreen extends StatelessWidget {
                       Expanded(
                         child: ElevatedButton.icon(
                           onPressed: () {
-                            Get.snackbar('Sent!', 'WhatsApp reminders sent to 3 members', snackPosition: SnackPosition.BOTTOM, backgroundColor: const Color(0xFF25D366), colorText: XColors.white);
+                            XHelperFunctions.showSnackBar('WhatsApp reminders sent to 3 members');
                           },
                           icon: const Icon(Iconsax.message, size: 18),
                           label: const Text('WhatsApp'),
@@ -51,7 +49,7 @@ class RemindersScreen extends StatelessWidget {
                       Expanded(
                         child: ElevatedButton.icon(
                           onPressed: () {
-                            Get.snackbar('Sent!', 'SMS reminders sent to 3 members', snackPosition: SnackPosition.BOTTOM, backgroundColor: XColors.primary, colorText: XColors.white);
+                            XHelperFunctions.showSnackBar('SMS reminders sent to 3 members');
                           },
                           icon: const Icon(Iconsax.sms, size: 18),
                           label: const Text('SMS'),
@@ -115,13 +113,13 @@ class RemindersScreen extends StatelessWidget {
                         ),
                         IconButton(
                           onPressed: () {
-                            Get.snackbar('Sent!', 'Reminder sent to ${r['name']}', snackPosition: SnackPosition.BOTTOM, backgroundColor: const Color(0xFF25D366), colorText: XColors.white);
+                            XHelperFunctions.showSnackBar('Reminder sent to ${r['name']}');
                           },
                           icon: const Icon(Iconsax.message, color: Color(0xFF25D366), size: 22),
                         ),
                         IconButton(
                           onPressed: () {
-                            Get.snackbar('Sent!', 'SMS sent to ${r['name']}', snackPosition: SnackPosition.BOTTOM, backgroundColor: XColors.primary, colorText: XColors.white);
+                            XHelperFunctions.showSnackBar('SMS sent to ${r['name']}');
                           },
                           icon: const Icon(Iconsax.sms, color: XColors.primary, size: 22),
                         ),

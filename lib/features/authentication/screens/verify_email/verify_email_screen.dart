@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:edox_library/utils/constants/colors.dart';
 import 'package:edox_library/utils/constants/sizes.dart';
 import 'package:edox_library/common/widgets/buttons/primary_button.dart';
-import 'package:edox_library/navigation_menu.dart';
 
 class VerifyEmailScreen extends StatelessWidget {
   const VerifyEmailScreen({super.key, this.email});
@@ -62,19 +60,18 @@ class VerifyEmailScreen extends StatelessWidget {
               /// --- Continue Button
               XPrimaryButton(
                 text: 'Continue',
-                onPressed: () => Get.offAllNamed('/'),
+                onPressed: () => Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false),
               ),
               const SizedBox(height: XSizes.spaceBtwItems),
 
               /// --- Resend
               TextButton(
                 onPressed: () {
-                  Get.snackbar(
-                    'Email Resent',
-                    'Verification email has been resent.',
-                    snackPosition: SnackPosition.BOTTOM,
-                    backgroundColor: XColors.accent,
-                    colorText: XColors.white,
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Verification email has been resent.'),
+                      backgroundColor: XColors.accent,
+                    ),
                   );
                 },
                 child: const Text('Resend Email'),

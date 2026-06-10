@@ -1,16 +1,17 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:get/get.dart';
+import 'package:edox_library/bindings/dependency_injection.dart';
+import 'package:edox_library/utils/helpers/helper_function.dart';
 
 import 'package:edox_library/utils/logging/logger.dart';
 
-/// A [GetxService] that manages Firebase Cloud Messaging (FCM)
+/// A service that manages Firebase Cloud Messaging (FCM)
 /// for push notifications in the EdoxLibrary application.
-class FCMService extends GetxService {
+class FCMService {
   FCMService._();
   static final FCMService _instance = FCMService._();
   factory FCMService() => _instance;
 
-  static FCMService get instance => Get.find();
+  static FCMService get instance => locator<FCMService>();
 
   final FirebaseMessaging _messaging = FirebaseMessaging.instance;
 
@@ -71,10 +72,8 @@ class FCMService extends GetxService {
       );
       // The app can show an in-app banner / snackbar here.
       if (message.notification != null) {
-        Get.snackbar(
-          message.notification?.title ?? 'Notification',
+        XHelperFunctions.showSnackBar(
           message.notification?.body ?? '',
-          snackPosition: SnackPosition.TOP,
         );
       }
     });
@@ -107,7 +106,7 @@ class FCMService extends GetxService {
   void _routeFromMessage(RemoteMessage message) {
     final data = message.data;
     if (data.containsKey('route')) {
-      Get.toNamed(data['route'] as String);
+      XHelperFunctions.navigatorKey.currentState?.pushNamed(data['route'] as String);
     }
   }
 }

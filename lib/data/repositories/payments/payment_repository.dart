@@ -1,15 +1,15 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:get/get.dart';
+import 'package:edox_library/bindings/dependency_injection.dart';
 import 'package:edox_library/data/repositories/authentication/authentication_repository.dart';
 import 'package:edox_library/features/payments/models/payment_model.dart';
 import 'package:edox_library/utils/constants/firebase_constants.dart';
 
-class PaymentRepository extends GetxController {
-  static PaymentRepository get instance => Get.find();
+class PaymentRepository {
+  static PaymentRepository get instance => locator<PaymentRepository>();
 
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  String get _libraryId => AuthenticationRepository.instance.authUser.value?.uid ?? '';
+  String get _libraryId => AuthenticationRepository.instance.currentUser?.uid ?? '';
 
   CollectionReference<Map<String, dynamic>> get _paymentsCollection =>
       _db.collection(XFirebaseConstants.librariesCollection).doc(_libraryId).collection(XFirebaseConstants.paymentsCollection);
@@ -27,7 +27,7 @@ class PaymentRepository extends GetxController {
   }
 
   // Get total monthly revenue (current month)
-  Future<double> getMonthlyRevenue() async {
+  Future<double> getMonthlyRevenue(String slotId) async {
     if (_libraryId.isEmpty) return 0.0;
     
     final now = DateTime.now();
@@ -40,13 +40,15 @@ class PaymentRepository extends GetxController {
     double total = 0;
     for (var doc in snapshot.docs) {
       final data = doc.data();
-      total += (data['amount'] ?? 0.0).toDouble();
+      final docSlotId = data['slotId'] ?? 'default';
+      if (slotId == 'all' || docSlotId == slotId) {
+        total += (data['amount'] ?? 0.0).toDouble();
+      }
     }
     return total;
   }
 
-  // Get today's collection
-  Future<double> getTodaysCollection() async {
+  Future<double> getTodaysCollection(String slotId) async {
     if (_libraryId.isEmpty) return 0.0;
     
     final now = DateTime.now();
@@ -59,13 +61,16 @@ class PaymentRepository extends GetxController {
     double total = 0;
     for (var doc in snapshot.docs) {
       final data = doc.data();
-      total += (data['amount'] ?? 0.0).toDouble();
+      final docSlotId = data['slotId'] ?? 'default';
+      if (slotId == 'all' || docSlotId == slotId) {
+        total += (data['amount'] ?? 0.0).toDouble();
+      }
     }
     return total;
   }
 
   // Get revenue for the last 6 months
-  Future<List<double>> getRevenueChartData() async {
+  Future<List<double>> getRevenueChartData(String slotId) async {
     if (_libraryId.isEmpty) return List.filled(6, 0.0);
     
     final now = DateTime.now();
@@ -80,6 +85,9 @@ class PaymentRepository extends GetxController {
         
     for (var doc in snapshot.docs) {
       final data = doc.data();
+      final docSlotId = data['slotId'] ?? 'default';
+      if (slotId != 'all' && docSlotId != slotId) continue;
+
       final date = (data['date'] as Timestamp).toDate();
       final amount = (data['amount'] ?? 0.0).toDouble();
       

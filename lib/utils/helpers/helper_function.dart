@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 
 /// A collection of helper functions used throughout the EdoxLibrary application.
 /// Provides utility methods for UI, navigation, formatting, and status checks.
 class XHelperFunctions {
   XHelperFunctions._();
+
+  static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+  static final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
 
   // ──────────────────────────── Theme ────────────────────────────
 
@@ -35,64 +37,88 @@ class XHelperFunctions {
 
   /// Shows a generic snackbar. Set [isError] to `true` for error styling.
   static void showSnackBar(String message, {bool isError = false}) {
-    Get.snackbar(
-      isError ? 'Error' : 'Info',
-      message,
-      snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: isError ? Colors.red.shade600 : Colors.blueGrey.shade800,
-      colorText: Colors.white,
-      margin: const EdgeInsets.all(16),
-      borderRadius: 12,
-      duration: const Duration(seconds: 3),
-      icon: Icon(
-        isError ? Icons.error_outline : Icons.info_outline,
-        color: Colors.white,
+    scaffoldMessengerKey.currentState?.clearSnackBars();
+    scaffoldMessengerKey.currentState?.showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(
+              isError ? Icons.error_outline : Icons.info_outline,
+              color: Colors.white,
+            ),
+            const SizedBox(width: 12),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: isError ? Colors.red.shade600 : Colors.blueGrey.shade800,
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        duration: const Duration(seconds: 3),
       ),
     );
   }
 
   /// Shows a success snackbar with a green background.
   static void showSuccessSnackBar(String message) {
-    Get.snackbar(
-      'Success',
-      message,
-      snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: Colors.green.shade600,
-      colorText: Colors.white,
-      margin: const EdgeInsets.all(16),
-      borderRadius: 12,
-      duration: const Duration(seconds: 3),
-      icon: const Icon(Icons.check_circle_outline, color: Colors.white),
+    scaffoldMessengerKey.currentState?.clearSnackBars();
+    scaffoldMessengerKey.currentState?.showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle_outline, color: Colors.white),
+            const SizedBox(width: 12),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: Colors.green.shade600,
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        duration: const Duration(seconds: 3),
+      ),
     );
   }
 
   /// Shows an error snackbar with a red background.
   static void showErrorSnackBar(String message) {
-    Get.snackbar(
-      'Error',
-      message,
-      snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: Colors.red.shade600,
-      colorText: Colors.white,
-      margin: const EdgeInsets.all(16),
-      borderRadius: 12,
-      duration: const Duration(seconds: 3),
-      icon: const Icon(Icons.error_outline, color: Colors.white),
+    scaffoldMessengerKey.currentState?.clearSnackBars();
+    scaffoldMessengerKey.currentState?.showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.error_outline, color: Colors.white),
+            const SizedBox(width: 12),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: Colors.red.shade600,
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        duration: const Duration(seconds: 3),
+      ),
     );
   }
 
   /// Shows a warning snackbar with an amber background.
   static void showWarningSnackBar(String message) {
-    Get.snackbar(
-      'Warning',
-      message,
-      snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: Colors.amber.shade700,
-      colorText: Colors.white,
-      margin: const EdgeInsets.all(16),
-      borderRadius: 12,
-      duration: const Duration(seconds: 3),
-      icon: const Icon(Icons.warning_amber_outlined, color: Colors.white),
+    scaffoldMessengerKey.currentState?.clearSnackBars();
+    scaffoldMessengerKey.currentState?.showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.warning_amber_outlined, color: Colors.white),
+            const SizedBox(width: 12),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: Colors.amber.shade700,
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        duration: const Duration(seconds: 3),
+      ),
     );
   }
 
@@ -100,14 +126,20 @@ class XHelperFunctions {
 
   /// Shows a simple informational alert dialog.
   static void showAlert(String title, String message) {
-    Get.defaultDialog(
-      title: title,
-      middleText: message,
-      textConfirm: 'OK',
-      confirmTextColor: Colors.white,
-      onConfirm: () => Get.back(),
-      barrierDismissible: true,
-      radius: 12,
+    final context = navigatorKey.currentContext;
+    if (context == null) return;
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -117,27 +149,38 @@ class XHelperFunctions {
     String message,
     VoidCallback onConfirm,
   ) {
-    Get.defaultDialog(
-      title: title,
-      middleText: message,
-      textConfirm: 'Confirm',
-      textCancel: 'Cancel',
-      confirmTextColor: Colors.white,
-      cancelTextColor: Colors.grey,
-      onConfirm: () {
-        Get.back();
-        onConfirm();
-      },
+    final context = navigatorKey.currentContext;
+    if (context == null) return;
+    showDialog(
+      context: context,
       barrierDismissible: false,
-      radius: 12,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              onConfirm();
+            },
+            child: const Text('Confirm'),
+          ),
+        ],
+      ),
     );
   }
 
   // ──────────────────────────── Navigation ───────────────────────
 
-  /// Navigates to the given [screen] using GetX.
+  /// Navigates to the given [screen] using standard Navigator.
   static void navigateToScreen(Widget screen) {
-    Get.to(() => screen);
+    navigatorKey.currentState?.push(
+      MaterialPageRoute(builder: (context) => screen),
+    );
   }
 
   // ──────────────────────────── Text ─────────────────────────────

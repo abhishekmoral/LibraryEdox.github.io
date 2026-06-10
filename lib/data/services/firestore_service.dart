@@ -1,19 +1,19 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:get/get.dart';
+import 'package:edox_library/bindings/dependency_injection.dart';
 
 import 'package:edox_library/utils/logging/logger.dart';
 
-/// A [GetxService] that exposes generic CRUD helpers over [FirebaseFirestore].
+/// A service helper that exposes generic CRUD helpers over [FirebaseFirestore].
 ///
 /// All document/collection paths should be built by the caller using
 /// [XFirebaseConstants] to enforce multi-tenant isolation
 /// (e.g. `libraries/$libraryId/members`).
-class FirestoreService extends GetxService {
+class FirestoreService {
   FirestoreService._();
   static final FirestoreService _instance = FirestoreService._();
   factory FirestoreService() => _instance;
 
-  static FirestoreService get instance => Get.find();
+  static FirestoreService get instance => locator<FirestoreService>();
 
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 

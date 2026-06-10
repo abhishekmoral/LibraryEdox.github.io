@@ -1,22 +1,34 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:edox_library/utils/constants/colors.dart';
 import 'package:edox_library/utils/constants/sizes.dart';
 import 'package:edox_library/utils/helpers/helper_function.dart';
 import 'package:edox_library/common/widgets/appbar/appbar.dart';
-import 'package:edox_library/common/widgets/buttons/primary_button.dart';
-
 import 'package:edox_library/features/subscription/controllers/razorpay_controller.dart';
 
-class SubscriptionScreen extends StatelessWidget {
+class SubscriptionScreen extends StatefulWidget {
   const SubscriptionScreen({super.key});
+
+  @override
+  State<SubscriptionScreen> createState() => _SubscriptionScreenState();
+}
+
+class _SubscriptionScreenState extends State<SubscriptionScreen> {
+  @override
+  void initState() {
+    super.initState();
+    RazorpayService.instance.init();
+  }
+
+  @override
+  void dispose() {
+    RazorpayService.instance.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final dark = XHelperFunctions.isDarkMode(context);
-    // Initialize the Razorpay Controller
-    Get.put(RazorpayController());
 
     return Scaffold(
       appBar: const XAppBar(title: Text('Subscription')),
@@ -64,7 +76,7 @@ class SubscriptionScreen extends StatelessWidget {
               features: ['Up to 50 seats', 'Up to 100 members', 'WhatsApp reminders', 'Basic reports'],
               color: XColors.accent,
               dark: dark,
-              onSelect: () => RazorpayController.instance.openCheckout('Basic', 499.0),
+              onSelect: () => RazorpayService.instance.openCheckout(context, 'Basic', 499.0),
             ),
             const SizedBox(height: XSizes.spaceBtwItems),
 
@@ -75,7 +87,7 @@ class SubscriptionScreen extends StatelessWidget {
               color: XColors.primary,
               dark: dark,
               recommended: true,
-              onSelect: () => RazorpayController.instance.openCheckout('Premium', 999.0),
+              onSelect: () => RazorpayService.instance.openCheckout(context, 'Premium', 999.0),
             ),
             const SizedBox(height: XSizes.spaceBtwSections),
           ],

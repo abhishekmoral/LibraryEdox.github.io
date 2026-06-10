@@ -1,34 +1,31 @@
-import 'package:get/get.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
-import 'package:edox_library/utils/helpers/helper_function.dart';
-import 'package:edox_library/utils/constants/colors.dart';
 import 'package:flutter/material.dart';
+import 'package:edox_library/utils/constants/colors.dart';
+import 'package:edox_library/bindings/dependency_injection.dart';
 
-class RazorpayController extends GetxController {
-  static RazorpayController get instance => Get.find();
+class RazorpayService {
+  static RazorpayService get instance => locator<RazorpayService>();
 
   late Razorpay _razorpay;
   
   // Replace this with your real Test/Live Key later!
   final String razorpayKey = 'rzp_test_12345678901234'; 
+  BuildContext? _context;
 
-  @override
-  void onInit() {
-    super.onInit();
+  void init() {
     _razorpay = Razorpay();
     _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
     _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
     _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
   }
 
-  @override
-  void onClose() {
+  void dispose() {
     _razorpay.clear();
-    super.onClose();
   }
 
   /// Opens the Razorpay Checkout overlay
-  void openCheckout(String planName, double amountInRupees) {
+  void openCheckout(BuildContext context, String planName, double amountInRupees) {
+    _context = context;
     // Razorpay expects amount in paise (Rupees * 100)
     var options = {
       'key': razorpayKey,
@@ -47,33 +44,43 @@ class RazorpayController extends GetxController {
     try {
       _razorpay.open(options);
     } catch (e) {
-      XHelperFunctions.showSnackBar('Error launching payment gateway: $e', isError: true);
+      if (_context != null) {
+        ScaffoldMessenger.of(_context!).showSnackBar(
+          SnackBar(content: Text('Error launching payment gateway: $e'), backgroundColor: Colors.red),
+        );
+      }
     }
   }
 
   void _handlePaymentSuccess(PaymentSuccessResponse response) {
-    // In a real app, you would verify the signature on your server
-    // and then update the user's plan in Firestore.
-    Get.snackbar(
-      'Payment Successful!',
-      'Payment ID: ${response.paymentId}. Your plan has been upgraded!',
-      snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: XColors.success,
-      colorText: XColors.white,
-    );
+    if (_context != null) {
+      ScaffoldMessenger.of(_context!).showSnackBar(
+        SnackBar(
+          content: Text('Payment Successful! Payment ID: ${response.paymentId}. Your plan has been upgraded!'),
+          backgroundColor: XColors.success,
+        ),
+      );
+    }
   }
 
   void _handlePaymentError(PaymentFailureResponse response) {
-    Get.snackbar(
-      'Payment Failed',
-      '${response.message}',
-      snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: XColors.error,
-      colorText: XColors.white,
-    );
+    if (_context != null) {
+      ScaffoldMessenger.of(_context!).showSnackBar(
+        SnackBar(
+          content: Text('Payment Failed: ${response.message}'),
+          backgroundColor: XColors.error,
+        ),
+      );
+    }
   }
 
   void _handleExternalWallet(ExternalWalletResponse response) {
-    XHelperFunctions.showSnackBar('External Wallet Selected: ${response.walletName}');
+    if (_context != null) {
+      ScaffoldMessenger.of(_context!).showSnackBar(
+        SnackBar(
+          content: Text('External Wallet Selected: ${response.walletName}'),
+        ),
+      );
+    }
   }
 }

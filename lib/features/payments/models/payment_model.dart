@@ -10,6 +10,7 @@ class PaymentModel {
   final String planId;
   final String planName;
   final String type;
+  final String slotId;
   final String notes;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -24,6 +25,7 @@ class PaymentModel {
     required this.planId,
     required this.planName,
     required this.type,
+    required this.slotId,
     required this.notes,
     required this.createdAt,
     required this.updatedAt,
@@ -40,6 +42,7 @@ class PaymentModel {
         planId: '',
         planName: '',
         type: 'new',
+        slotId: 'default',
         notes: '',
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
@@ -59,6 +62,7 @@ class PaymentModel {
       planId: data?['planId'] ?? '',
       planName: data?['planName'] ?? '',
       type: data?['type'] ?? 'new',
+      slotId: data?['slotId'] ?? 'default',
       notes: data?['notes'] ?? '',
       createdAt:
           (data?['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
@@ -77,6 +81,7 @@ class PaymentModel {
         'planId': planId,
         'planName': planName,
         'type': type,
+        'slotId': slotId,
         'notes': notes,
         'createdAt': Timestamp.fromDate(createdAt),
         'updatedAt': Timestamp.fromDate(updatedAt),
@@ -93,6 +98,7 @@ class PaymentModel {
     String? planId,
     String? planName,
     String? type,
+    String? slotId,
     String? notes,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -107,6 +113,7 @@ class PaymentModel {
       planId: planId ?? this.planId,
       planName: planName ?? this.planName,
       type: type ?? this.type,
+      slotId: slotId ?? this.slotId,
       notes: notes ?? this.notes,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,

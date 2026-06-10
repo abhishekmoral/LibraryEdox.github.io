@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 import 'package:edox_library/utils/constants/colors.dart';
 import 'package:edox_library/utils/constants/sizes.dart';
 
@@ -31,7 +30,7 @@ class XAppBar extends StatelessWidget implements PreferredSizeWidget {
       actions: actions,
       leading: showBackArrow
           ? IconButton(
-              onPressed: leadingOnPressed ?? () => Get.back(),
+              onPressed: leadingOnPressed ?? () => Navigator.pop(context),
               icon: const Icon(Icons.arrow_back_ios_new),
             )
           : leadingIcon != null

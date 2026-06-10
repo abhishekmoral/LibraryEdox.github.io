@@ -4,6 +4,8 @@ class SeatModel {
   final String id;
   final String seatNumber;
   final String status;
+  final bool isOccupied;
+  final String slotId;
   final String memberId;
   final String memberName;
   final String memberMobile;
@@ -15,6 +17,8 @@ class SeatModel {
     required this.id,
     required this.seatNumber,
     required this.status,
+    required this.isOccupied,
+    required this.slotId,
     required this.memberId,
     required this.memberName,
     required this.memberMobile,
@@ -26,8 +30,6 @@ class SeatModel {
   /// Whether the seat is available.
   bool get isAvailable => status == 'available';
 
-  /// Whether the seat is occupied.
-  bool get isOccupied => status == 'occupied';
 
   /// Whether the assigned member's membership is expiring within 7 days.
   bool get isExpiringSoon {
@@ -42,6 +44,8 @@ class SeatModel {
         id: '',
         seatNumber: '',
         status: 'available',
+        isOccupied: false,
+        slotId: 'default',
         memberId: '',
         memberName: '',
         memberMobile: '',
@@ -54,10 +58,13 @@ class SeatModel {
   factory SeatModel.fromSnapshot(
       DocumentSnapshot<Map<String, dynamic>> document) {
     final data = document.data();
+    final status = data?['status'] ?? 'available';
     return SeatModel(
       id: document.id,
       seatNumber: data?['seatNumber'] ?? '',
-      status: data?['status'] ?? 'available',
+      status: status,
+      isOccupied: data?['isOccupied'] ?? (status == 'occupied'),
+      slotId: data?['slotId'] ?? 'default',
       memberId: data?['memberId'] ?? '',
       memberName: data?['memberName'] ?? '',
       memberMobile: data?['memberMobile'] ?? '',
@@ -74,6 +81,8 @@ class SeatModel {
   Map<String, dynamic> toJson() => {
         'seatNumber': seatNumber,
         'status': status,
+        'isOccupied': isOccupied,
+        'slotId': slotId,
         'memberId': memberId,
         'memberName': memberName,
         'memberMobile': memberMobile,
@@ -88,6 +97,8 @@ class SeatModel {
     String? id,
     String? seatNumber,
     String? status,
+    bool? isOccupied,
+    String? slotId,
     String? memberId,
     String? memberName,
     String? memberMobile,
@@ -99,6 +110,8 @@ class SeatModel {
       id: id ?? this.id,
       seatNumber: seatNumber ?? this.seatNumber,
       status: status ?? this.status,
+      isOccupied: isOccupied ?? this.isOccupied,
+      slotId: slotId ?? this.slotId,
       memberId: memberId ?? this.memberId,
       memberName: memberName ?? this.memberName,
       memberMobile: memberMobile ?? this.memberMobile,

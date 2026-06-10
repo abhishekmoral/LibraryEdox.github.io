@@ -1,25 +1,28 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:get/get.dart';
+import 'package:edox_library/bindings/dependency_injection.dart';
 import 'package:edox_library/data/repositories/authentication/authentication_repository.dart';
 import 'package:edox_library/features/members/models/member_model.dart';
 import 'package:edox_library/utils/constants/firebase_constants.dart';
 
-class MemberRepository extends GetxController {
-  static MemberRepository get instance => Get.find();
+class MemberRepository {
+  static MemberRepository get instance => locator<MemberRepository>();
 
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  String get _libraryId => AuthenticationRepository.instance.authUser.value?.uid ?? '';
+  String get _libraryId => AuthenticationRepository.instance.currentUser?.uid ?? '';
 
   CollectionReference<Map<String, dynamic>> get _membersCollection =>
       _db.collection(XFirebaseConstants.librariesCollection).doc(_libraryId).collection(XFirebaseConstants.membersCollection);
 
   // Fetch all members stream
-  Stream<List<MemberModel>> getAllMembersStream() {
+  Stream<List<MemberModel>> getAllMembersStream(String slotId) {
     if (_libraryId.isEmpty) return const Stream.empty();
     
     return _membersCollection.snapshots().map((snapshot) {
-      return snapshot.docs.map((doc) => MemberModel.fromSnapshot(doc)).toList();
+      return snapshot.docs
+          .map((doc) => MemberModel.fromSnapshot(doc))
+          .where((m) => slotId == 'all' || m.slotId == slotId)
+          .toList();
     });
   }
 
@@ -58,26 +61,34 @@ class MemberRepository extends GetxController {
   }
 
   // Get total members count
-  Future<int> getTotalMembersCount() async {
+  Future<int> getTotalMembersCount(String slotId) async {
     if (_libraryId.isEmpty) return 0;
-    final snapshot = await _membersCollection.count().get();
+    final query = slotId == 'all'
+        ? _membersCollection
+        : _membersCollection.where('slotId', isEqualTo: slotId);
+    final snapshot = await query.count().get();
     return snapshot.count ?? 0;
   }
 
   // Get active members count
-  Future<int> getActiveMembersCount() async {
+  Future<int> getActiveMembersCount(String slotId) async {
     if (_libraryId.isEmpty) return 0;
-    final snapshot = await _membersCollection.where('status', isEqualTo: 'active').count().get();
+    final query = slotId == 'all'
+        ? _membersCollection.where('status', isEqualTo: 'active')
+        : _membersCollection.where('slotId', isEqualTo: slotId).where('status', isEqualTo: 'active');
+    final snapshot = await query.count().get();
     return snapshot.count ?? 0;
   }
 
   // Get pending payments amount
-  Future<double> getPendingPaymentsAmount() async {
+  Future<double> getPendingPaymentsAmount(String slotId) async {
     if (_libraryId.isEmpty) return 0.0;
     
-    final snapshot = await _membersCollection
-        .where('paymentStatus', isEqualTo: 'pending')
-        .get();
+    final query = slotId == 'all'
+        ? _membersCollection.where('paymentStatus', isEqualTo: 'pending')
+        : _membersCollection.where('slotId', isEqualTo: slotId).where('paymentStatus', isEqualTo: 'pending');
+        
+    final snapshot = await query.get();
         
     double total = 0;
     for (var doc in snapshot.docs) {

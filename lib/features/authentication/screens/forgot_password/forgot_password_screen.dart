@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:edox_library/utils/constants/colors.dart';
 import 'package:edox_library/utils/constants/sizes.dart';
@@ -9,15 +8,26 @@ import 'package:edox_library/common/widgets/appbar/appbar.dart';
 import 'package:edox_library/common/widgets/buttons/primary_button.dart';
 import 'package:edox_library/common/widgets/inputs/text_field.dart';
 
-class ForgotPasswordScreen extends StatelessWidget {
+class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final emailController = TextEditingController();
-    final formKey = GlobalKey<FormState>();
-    final isLoading = false.obs;
+  State<ForgotPasswordScreen> createState() => _ForgotPasswordScreenState();
+}
 
+class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
+  final emailController = TextEditingController();
+  final formKey = GlobalKey<FormState>();
+  bool isLoading = false;
+
+  @override
+  void dispose() {
+    emailController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       appBar: const XAppBar(title: Text(''), showBackArrow: true),
       body: SingleChildScrollView(
@@ -63,27 +73,29 @@ class ForgotPasswordScreen extends StatelessWidget {
                       validator: XValidator.validateEmail,
                     ),
                     const SizedBox(height: XSizes.spaceBtwSections),
-                    Obx(
-                      () => XPrimaryButton(
-                        text: 'Send Reset Link',
-                        isLoading: isLoading.value,
-                        onPressed: () {
-                          if (formKey.currentState!.validate()) {
-                            isLoading.value = true;
-                            Future.delayed(const Duration(seconds: 1), () {
-                              isLoading.value = false;
-                              Get.back();
-                              Get.snackbar(
-                                'Email Sent',
-                                'Password reset link has been sent to your email.',
-                                snackPosition: SnackPosition.BOTTOM,
-                                backgroundColor: XColors.accent,
-                                colorText: XColors.white,
-                              );
+                    XPrimaryButton(
+                      text: 'Send Reset Link',
+                      isLoading: isLoading,
+                      onPressed: () {
+                        if (formKey.currentState!.validate()) {
+                          setState(() {
+                            isLoading = true;
+                          });
+                          Future.delayed(const Duration(seconds: 1), () {
+                            if (!mounted) return;
+                            setState(() {
+                              isLoading = false;
                             });
-                          }
-                        },
-                      ),
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Password reset link has been sent to your email.'),
+                                backgroundColor: XColors.accent,
+                              ),
+                            );
+                          });
+                        }
+                      },
                     ),
                   ],
                 ),

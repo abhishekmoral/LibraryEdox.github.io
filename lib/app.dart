@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
-import 'package:edox_library/bindings/general_bindings.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:edox_library/bindings/dependency_injection.dart';
 import 'package:edox_library/utils/constants/text_strings.dart';
 import 'package:edox_library/utils/theme/theme.dart';
-import 'package:edox_library/utils/constants/colors.dart';
+import 'package:edox_library/utils/helpers/helper_function.dart';
 import 'package:edox_library/routes/app_routes.dart';
+
+// Screens
 import 'package:edox_library/features/authentication/screens/login/login_screen.dart';
 import 'package:edox_library/features/authentication/screens/register/register_screen.dart';
 import 'package:edox_library/features/authentication/screens/forgot_password/forgot_password_screen.dart';
@@ -17,32 +19,80 @@ import 'package:edox_library/features/reminders/screens/reminders_screen.dart';
 import 'package:edox_library/features/subscription/screens/subscription_screen.dart';
 import 'package:edox_library/navigation_menu.dart';
 
+// Cubits
+import 'package:edox_library/features/authentication/controllers/auth_cubit.dart';
+import 'package:edox_library/features/slots/controllers/slots_cubit.dart';
+import 'package:edox_library/features/seats/controllers/seats_cubit.dart';
+import 'package:edox_library/features/members/controllers/members_cubit.dart';
+import 'package:edox_library/features/dashboard/controllers/dashboard_cubit.dart';
+import 'package:edox_library/features/personalization/controllers/library_cubit.dart';
+import 'package:edox_library/features/settings/controllers/theme_cubit.dart';
+
 class App extends StatelessWidget {
   const App({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return GetMaterialApp(
-      title: XTexts.xAppName,
-      debugShowCheckedModeBanner: false,
-      themeMode: ThemeMode.system,
-      theme: XAppTheme.lightTheme,
-      darkTheme: XAppTheme.darkTheme,
-      initialBinding: GeneralBindings(),
-      initialRoute: XRoutes.login,
-      getPages: [
-        GetPage(name: XRoutes.login, page: () => const LoginScreen()),
-        GetPage(name: XRoutes.register, page: () => const RegisterScreen()),
-        GetPage(name: XRoutes.forgotPassword, page: () => const ForgotPasswordScreen()),
-        GetPage(name: XRoutes.verifyEmail, page: () => const VerifyEmailScreen()),
-        GetPage(name: XRoutes.navigation, page: () => const NavigationMenu()),
-        GetPage(name: XRoutes.addMember, page: () => const AddMemberScreen()),
-        GetPage(name: XRoutes.payments, page: () => const PaymentsScreen()),
-        GetPage(name: XRoutes.collectPayment, page: () => const CollectPaymentScreen()),
-        GetPage(name: XRoutes.plans, page: () => const PlansScreen()),
-        GetPage(name: XRoutes.reminders, page: () => const RemindersScreen()),
-        GetPage(name: XRoutes.subscription, page: () => const SubscriptionScreen()),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider<AuthCubit>(create: (context) => locator<AuthCubit>()),
+        BlocProvider<SlotsCubit>(create: (context) => locator<SlotsCubit>()),
+        BlocProvider<SeatsCubit>(create: (context) => locator<SeatsCubit>()),
+        BlocProvider<MembersCubit>(create: (context) => locator<MembersCubit>()),
+        BlocProvider<DashboardCubit>(create: (context) => locator<DashboardCubit>()),
+        BlocProvider<LibraryCubit>(create: (context) => locator<LibraryCubit>()),
+        BlocProvider<ThemeCubit>(create: (context) => locator<ThemeCubit>()),
       ],
+      child: BlocBuilder<ThemeCubit, ThemeMode>(
+        builder: (context, themeMode) {
+          return MaterialApp(
+            title: XTexts.xAppName,
+            debugShowCheckedModeBanner: false,
+            themeMode: themeMode,
+            theme: XAppTheme.lightTheme,
+            darkTheme: XAppTheme.darkTheme,
+            navigatorKey: XHelperFunctions.navigatorKey,
+            scaffoldMessengerKey: XHelperFunctions.scaffoldMessengerKey,
+            initialRoute: XRoutes.navigation,
+            routes: {
+              XRoutes.navigation: (context) => const AuthWrapper(),
+              XRoutes.login: (context) => const LoginScreen(),
+              XRoutes.register: (context) => const RegisterScreen(),
+              XRoutes.forgotPassword: (context) => const ForgotPasswordScreen(),
+              XRoutes.verifyEmail: (context) => const VerifyEmailScreen(),
+              XRoutes.addMember: (context) => const AddMemberScreen(),
+              XRoutes.payments: (context) => const PaymentsScreen(),
+              XRoutes.collectPayment: (context) => const CollectPaymentScreen(),
+              XRoutes.plans: (context) => const PlansScreen(),
+              XRoutes.reminders: (context) => const RemindersScreen(),
+              XRoutes.subscription: (context) => const SubscriptionScreen(),
+            },
+          );
+        },
+      ),
+    );
+  }
+}
+
+class AuthWrapper extends StatelessWidget {
+  const AuthWrapper({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<AuthCubit, AuthState>(
+      builder: (context, state) {
+        if (state is Authenticated) {
+          return const NavigationMenu();
+        } else if (state is Unauthenticated) {
+          return const LoginScreen();
+        } else {
+          return const Scaffold(
+            body: Center(
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
+      },
     );
   }
 }

@@ -1,36 +1,22 @@
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:get/get.dart';
+import 'package:edox_library/bindings/dependency_injection.dart';
 
 import 'package:edox_library/utils/logging/logger.dart';
 
-/// A [GetxService] wrapper around [FirebaseAuth] that provides
+/// A wrapper around [FirebaseAuth] that provides
 /// authentication methods for the EdoxLibrary application.
-///
-/// Register once at app startup via `Get.put(FirebaseAuthService())`.
-class FirebaseAuthService extends GetxService {
-  FirebaseAuthService._();
-  static final FirebaseAuthService _instance = FirebaseAuthService._();
-  factory FirebaseAuthService() => _instance;
+class FirebaseAuthService {
+  FirebaseAuthService() {
+    _init();
+  }
 
-  static FirebaseAuthService get instance => Get.find();
+  static FirebaseAuthService get instance => locator<FirebaseAuthService>();
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  /// Observable that holds the currently signed-in Firebase user.
-  final Rx<User?> firebaseUser = Rx<User?>(null);
-
-  /// Observable verification ID used during phone-auth flows.
-  final RxString verificationId = ''.obs;
-
-  // ──────────────────────────── Lifecycle ────────────────────────
-
-  @override
-  void onReady() {
-    super.onReady();
-    firebaseUser.value = _auth.currentUser;
-    // Keep the observable in sync with the auth state.
+  void _init() {
+    // Keep the logger in sync with the auth state.
     _auth.authStateChanges().listen((User? user) {
-      firebaseUser.value = user;
       XLoggerHelper.info(
         user != null
             ? 'Auth state changed → signed in as ${user.email}'

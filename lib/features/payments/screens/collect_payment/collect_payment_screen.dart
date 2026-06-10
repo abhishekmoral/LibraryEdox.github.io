@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:edox_library/utils/constants/colors.dart';
 import 'package:edox_library/utils/constants/sizes.dart';
@@ -8,22 +7,28 @@ import 'package:edox_library/common/widgets/appbar/appbar.dart';
 import 'package:edox_library/common/widgets/buttons/primary_button.dart';
 import 'package:edox_library/common/widgets/inputs/text_field.dart';
 import 'package:edox_library/common/widgets/inputs/dropdown_field.dart';
+import 'package:edox_library/utils/helpers/helper_function.dart';
 
-class CollectPaymentScreen extends StatelessWidget {
+class CollectPaymentScreen extends StatefulWidget {
   const CollectPaymentScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final formKey = GlobalKey<FormState>();
-    final isLoading = false.obs;
-    final selectedMethod = Rxn<String>();
+  State<CollectPaymentScreen> createState() => _CollectPaymentScreenState();
+}
 
+class _CollectPaymentScreenState extends State<CollectPaymentScreen> {
+  final _formKey = GlobalKey<FormState>();
+  bool _isLoading = false;
+  String? _selectedMethod;
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       appBar: const XAppBar(title: Text('Collect Fee')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(XSizes.defaultSpace),
         child: Form(
-          key: formKey,
+          key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -69,15 +74,30 @@ class CollectPaymentScreen extends StatelessWidget {
               /// --- Payment Method
               Text('Payment Method', style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
               const SizedBox(height: XSizes.sm),
-              Obx(() => Row(
+              Row(
                 children: [
-                  _MethodChip(label: 'Cash', icon: Iconsax.money_recive, selected: selectedMethod.value == 'cash', onTap: () => selectedMethod.value = 'cash'),
+                  _MethodChip(
+                    label: 'Cash', 
+                    icon: Iconsax.money_recive, 
+                    selected: _selectedMethod == 'cash', 
+                    onTap: () => setState(() => _selectedMethod = 'cash'),
+                  ),
                   const SizedBox(width: 8),
-                  _MethodChip(label: 'UPI', icon: Iconsax.mobile, selected: selectedMethod.value == 'upi', onTap: () => selectedMethod.value = 'upi'),
+                  _MethodChip(
+                    label: 'UPI', 
+                    icon: Iconsax.mobile, 
+                    selected: _selectedMethod == 'upi', 
+                    onTap: () => setState(() => _selectedMethod = 'upi'),
+                  ),
                   const SizedBox(width: 8),
-                  _MethodChip(label: 'Bank', icon: Iconsax.bank, selected: selectedMethod.value == 'bank', onTap: () => selectedMethod.value = 'bank'),
+                  _MethodChip(
+                    label: 'Bank', 
+                    icon: Iconsax.bank, 
+                    selected: _selectedMethod == 'bank', 
+                    onTap: () => setState(() => _selectedMethod = 'bank'),
+                  ),
                 ],
-              )),
+              ),
               const SizedBox(height: XSizes.spaceBtwItems),
 
               /// --- Notes
@@ -85,21 +105,27 @@ class CollectPaymentScreen extends StatelessWidget {
               const SizedBox(height: XSizes.spaceBtwSections),
 
               /// --- Submit
-              Obx(() => XPrimaryButton(
+              XPrimaryButton(
                 text: 'Collect Payment',
-                isLoading: isLoading.value,
+                isLoading: _isLoading,
                 icon: Iconsax.tick_circle,
                 onPressed: () {
-                  if (formKey.currentState!.validate()) {
-                    isLoading.value = true;
+                  if (_formKey.currentState!.validate()) {
+                    setState(() {
+                      _isLoading = true;
+                    });
                     Future.delayed(const Duration(seconds: 1), () {
-                      isLoading.value = false;
-                      Get.back();
-                      Get.snackbar('Success', 'Payment collected successfully!', snackPosition: SnackPosition.BOTTOM, backgroundColor: XColors.accent, colorText: XColors.white);
+                      if (mounted) {
+                        setState(() {
+                          _isLoading = false;
+                        });
+                        Navigator.pop(context);
+                        XHelperFunctions.showSnackBar('Payment collected successfully!');
+                      }
                     });
                   }
                 },
-              )),
+              ),
             ],
           ),
         ),

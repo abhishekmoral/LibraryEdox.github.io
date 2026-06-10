@@ -2,20 +2,20 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:firebase_storage/firebase_storage.dart';
-import 'package:get/get.dart';
+import 'package:edox_library/bindings/dependency_injection.dart';
 
 import 'package:edox_library/utils/logging/logger.dart';
 
-/// A [GetxService] that wraps [FirebaseStorage] for uploading and
+/// A service that wraps [FirebaseStorage] for uploading and
 /// deleting images and files in the EdoxLibrary application.
 ///
 /// Accepts both [File] (mobile) and [Uint8List] (web) inputs.
-class FirebaseStorageService extends GetxService {
+class FirebaseStorageService {
   FirebaseStorageService._();
   static final FirebaseStorageService _instance = FirebaseStorageService._();
   factory FirebaseStorageService() => _instance;
 
-  static FirebaseStorageService get instance => Get.find();
+  static FirebaseStorageService get instance => locator<FirebaseStorageService>();
 
   final FirebaseStorage _storage = FirebaseStorage.instance;
 

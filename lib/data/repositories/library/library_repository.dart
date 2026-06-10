@@ -1,10 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:get/get.dart';
+import 'package:edox_library/bindings/dependency_injection.dart';
 import 'package:edox_library/features/authentication/models/library_model.dart';
 import 'package:edox_library/utils/constants/firebase_constants.dart';
 
-class LibraryRepository extends GetxController {
-  static LibraryRepository get instance => Get.find();
+class LibraryRepository {
+  static LibraryRepository get instance => locator<LibraryRepository>();
 
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 

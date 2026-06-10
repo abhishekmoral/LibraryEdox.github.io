@@ -11,6 +11,7 @@ class MemberModel {
   final String photo;
   final String seatId;
   final String seatNumber;
+  final String slotId;
   final DateTime joiningDate;
   final String planId;
   final String planName;
@@ -32,6 +33,7 @@ class MemberModel {
     required this.photo,
     required this.seatId,
     required this.seatNumber,
+    required this.slotId,
     required this.joiningDate,
     required this.planId,
     required this.planName,
@@ -68,6 +70,7 @@ class MemberModel {
         photo: '',
         seatId: '',
         seatNumber: '',
+        slotId: 'default',
         joiningDate: DateTime.now(),
         planId: '',
         planName: '',
@@ -94,6 +97,7 @@ class MemberModel {
       photo: data?['photo'] ?? '',
       seatId: data?['seatId'] ?? '',
       seatNumber: data?['seatNumber'] ?? '',
+      slotId: data?['slotId'] ?? 'default',
       joiningDate:
           (data?['joiningDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
       planId: data?['planId'] ?? '',
@@ -121,6 +125,7 @@ class MemberModel {
         'photo': photo,
         'seatId': seatId,
         'seatNumber': seatNumber,
+        'slotId': slotId,
         'joiningDate': Timestamp.fromDate(joiningDate),
         'planId': planId,
         'planName': planName,
@@ -144,6 +149,7 @@ class MemberModel {
     String? photo,
     String? seatId,
     String? seatNumber,
+    String? slotId,
     DateTime? joiningDate,
     String? planId,
     String? planName,
@@ -165,6 +171,7 @@ class MemberModel {
       photo: photo ?? this.photo,
       seatId: seatId ?? this.seatId,
       seatNumber: seatNumber ?? this.seatNumber,
+      slotId: slotId ?? this.slotId,
       joiningDate: joiningDate ?? this.joiningDate,
       planId: planId ?? this.planId,
       planName: planName ?? this.planName,

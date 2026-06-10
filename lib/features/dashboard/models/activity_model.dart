@@ -6,6 +6,7 @@ class ActivityModel {
   final String title;
   final String description;
   final String? memberId;
+  final String slotId;
   final DateTime createdAt;
 
   const ActivityModel({
@@ -14,6 +15,7 @@ class ActivityModel {
     required this.title,
     required this.description,
     this.memberId,
+    this.slotId = 'default',
     required this.createdAt,
   });
 
@@ -24,6 +26,7 @@ class ActivityModel {
         title: '',
         description: '',
         memberId: null,
+        slotId: 'default',
         createdAt: DateTime.now(),
       );
 
@@ -37,6 +40,7 @@ class ActivityModel {
       title: data?['title'] ?? '',
       description: data?['description'] ?? '',
       memberId: data?['memberId'],
+      slotId: data?['slotId'] ?? 'default',
       createdAt:
           (data?['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
@@ -48,6 +52,7 @@ class ActivityModel {
         'title': title,
         'description': description,
         'memberId': memberId,
+        'slotId': slotId,
         'createdAt': Timestamp.fromDate(createdAt),
       };
 
@@ -58,6 +63,7 @@ class ActivityModel {
     String? title,
     String? description,
     String? memberId,
+    String? slotId,
     DateTime? createdAt,
   }) {
     return ActivityModel(
@@ -66,6 +72,7 @@ class ActivityModel {
       title: title ?? this.title,
       description: description ?? this.description,
       memberId: memberId ?? this.memberId,
+      slotId: slotId ?? this.slotId,
       createdAt: createdAt ?? this.createdAt,
     );
   }
