@@ -33,12 +33,34 @@ class SlotRepository {
     }
   }
 
+  // Save slot with a specific ID
+  Future<void> saveSlotRecordWithId(String id, SlotModel slot) async {
+    try {
+      await _slotsCollection.doc(id).set(slot.toJson());
+    } on FirebaseException catch (e) {
+      throw e.message ?? 'Failed to save slot data.';
+    } catch (e) {
+      throw 'Something went wrong. Please try again.';
+    }
+  }
+
   // Delete slot
   Future<void> deleteSlot(String id) async {
     try {
       await _slotsCollection.doc(id).delete();
     } on FirebaseException catch (e) {
       throw e.message ?? 'Failed to delete slot.';
+    } catch (e) {
+      throw 'Something went wrong. Please try again.';
+    }
+  }
+
+  // Update slot
+  Future<void> updateSlot(SlotModel slot) async {
+    try {
+      await _slotsCollection.doc(slot.id).update(slot.toJson());
+    } on FirebaseException catch (e) {
+      throw e.message ?? 'Failed to update slot.';
     } catch (e) {
       throw 'Something went wrong. Please try again.';
     }

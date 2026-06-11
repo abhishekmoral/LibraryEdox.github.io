@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:collection/collection.dart';
 import 'package:edox_library/utils/constants/colors.dart';
 import 'package:edox_library/utils/constants/sizes.dart';
 import 'package:edox_library/utils/validators/validation.dart';
@@ -8,6 +10,12 @@ import 'package:edox_library/common/widgets/buttons/primary_button.dart';
 import 'package:edox_library/common/widgets/inputs/text_field.dart';
 import 'package:edox_library/common/widgets/inputs/dropdown_field.dart';
 import 'package:edox_library/utils/helpers/helper_function.dart';
+import 'package:edox_library/data/repositories/members/member_repository.dart';
+import 'package:edox_library/data/repositories/payments/payment_repository.dart';
+import 'package:edox_library/features/members/models/member_model.dart';
+import 'package:edox_library/features/payments/models/payment_model.dart';
+import 'package:edox_library/bindings/dependency_injection.dart';
+import 'package:edox_library/features/dashboard/controllers/dashboard_cubit.dart';
 
 class CollectPaymentScreen extends StatefulWidget {
   const CollectPaymentScreen({super.key});
@@ -19,7 +27,34 @@ class CollectPaymentScreen extends StatefulWidget {
 class _CollectPaymentScreenState extends State<CollectPaymentScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
-  String? _selectedMethod;
+  String _selectedMethod = 'cash';
+
+  List<MemberModel> _members = [];
+  MemberModel? _selectedMember;
+  final TextEditingController _amountController = TextEditingController();
+  final TextEditingController _notesController = TextEditingController();
+  String _selectedPlanId = 'monthly';
+  StreamSubscription? _membersSub;
+
+  @override
+  void initState() {
+    super.initState();
+    _membersSub = MemberRepository.instance.getAllMembersStream('all').listen((memberList) {
+      if (mounted) {
+        setState(() {
+          _members = memberList;
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _membersSub?.cancel();
+    _amountController.dispose();
+    _notesController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -36,13 +71,28 @@ class _CollectPaymentScreenState extends State<CollectPaymentScreen> {
               XDropdownField<String>(
                 label: 'Select Member',
                 prefixIcon: Iconsax.user,
-                items: const [
-                  DropdownMenuItem(value: '1', child: Text('Rahul Sharma - A-01')),
-                  DropdownMenuItem(value: '2', child: Text('Priya Patel - A-02')),
-                  DropdownMenuItem(value: '3', child: Text('Amit Kumar - A-03')),
-                  DropdownMenuItem(value: '5', child: Text('Vikash Gupta - B-03')),
-                ],
-                onChanged: (v) {},
+                value: _selectedMember?.id,
+                items: _members.map((m) {
+                  return DropdownMenuItem<String>(
+                    value: m.id,
+                    child: Text('${m.fullName} - ${m.seatNumber}'),
+                  );
+                }).toList(),
+                onChanged: (v) {
+                  final member = _members.firstWhereOrNull((m) => m.id == v);
+                  if (member != null) {
+                    setState(() {
+                      _selectedMember = member;
+                      _selectedPlanId = member.planId.isNotEmpty ? member.planId : 'monthly';
+                      double fee = 1500;
+                      if (_selectedPlanId == 'monthly') fee = 1500;
+                      else if (_selectedPlanId == 'quarterly') fee = 4000;
+                      else if (_selectedPlanId == 'half_yearly') fee = 7500;
+                      else if (_selectedPlanId == 'annual') fee = 14000;
+                      _amountController.text = fee.toInt().toString();
+                    });
+                  }
+                },
                 validator: (v) => v == null ? 'Select a member' : null,
               ),
               const SizedBox(height: XSizes.spaceBtwItems),
@@ -51,13 +101,31 @@ class _CollectPaymentScreenState extends State<CollectPaymentScreen> {
               XDropdownField<String>(
                 label: 'Membership Plan',
                 prefixIcon: Iconsax.calendar_1,
+                value: _selectedPlanId,
                 items: const [
                   DropdownMenuItem(value: 'monthly', child: Text('Monthly - ₹1,500')),
                   DropdownMenuItem(value: 'quarterly', child: Text('Quarterly - ₹4,000')),
                   DropdownMenuItem(value: 'half_yearly', child: Text('Half Yearly - ₹7,500')),
                   DropdownMenuItem(value: 'annual', child: Text('Annual - ₹14,000')),
+                  DropdownMenuItem(value: 'manual', child: Text('Manual Plan - Custom Amount')),
                 ],
-                onChanged: (v) {},
+                onChanged: (v) {
+                  if (v != null) {
+                    setState(() {
+                      _selectedPlanId = v;
+                      double fee = 1500;
+                      if (_selectedPlanId == 'monthly') fee = 1500;
+                      else if (_selectedPlanId == 'quarterly') fee = 4000;
+                      else if (_selectedPlanId == 'half_yearly') fee = 7500;
+                      else if (_selectedPlanId == 'annual') fee = 14000;
+                      else fee = 0;
+                      
+                      if (_selectedPlanId != 'manual') {
+                        _amountController.text = fee.toInt().toString();
+                      }
+                    });
+                  }
+                },
               ),
               const SizedBox(height: XSizes.spaceBtwItems),
 
@@ -65,6 +133,7 @@ class _CollectPaymentScreenState extends State<CollectPaymentScreen> {
               XTextField(
                 label: 'Amount (₹)',
                 hint: 'Enter amount',
+                controller: _amountController,
                 prefixIcon: Iconsax.money_recive,
                 keyboardType: TextInputType.number,
                 validator: XValidator.validateAmount,
@@ -101,7 +170,13 @@ class _CollectPaymentScreenState extends State<CollectPaymentScreen> {
               const SizedBox(height: XSizes.spaceBtwItems),
 
               /// --- Notes
-              XTextField(label: 'Notes', hint: 'Payment notes (optional)', prefixIcon: Iconsax.note_1, maxLines: 2),
+              XTextField(
+                label: 'Notes',
+                hint: 'Payment notes (optional)',
+                controller: _notesController,
+                prefixIcon: Iconsax.note_1,
+                maxLines: 2,
+              ),
               const SizedBox(height: XSizes.spaceBtwSections),
 
               /// --- Submit
@@ -109,20 +184,71 @@ class _CollectPaymentScreenState extends State<CollectPaymentScreen> {
                 text: 'Collect Payment',
                 isLoading: _isLoading,
                 icon: Iconsax.tick_circle,
-                onPressed: () {
+                onPressed: () async {
                   if (_formKey.currentState!.validate()) {
+                    if (_selectedMember == null) {
+                      XHelperFunctions.showSnackBar('Please select a member.');
+                      return;
+                    }
                     setState(() {
                       _isLoading = true;
                     });
-                    Future.delayed(const Duration(seconds: 1), () {
+                    try {
+                      final amount = double.parse(_amountController.text.trim());
+
+                      // 1. Save payment record
+                      final payment = PaymentModel(
+                        id: '',
+                        memberId: _selectedMember!.id,
+                        memberName: _selectedMember!.fullName,
+                        amount: amount,
+                        date: DateTime.now(),
+                        paymentMethod: _selectedMethod,
+                        planId: _selectedPlanId,
+                        planName: _selectedPlanId == 'monthly'
+                            ? 'Monthly'
+                            : _selectedPlanId == 'quarterly'
+                                ? 'Quarterly'
+                                : _selectedPlanId == 'half_yearly'
+                                    ? 'Half Yearly'
+                                    : _selectedPlanId == 'annual'
+                                        ? 'Annual'
+                                        : 'Manual Plan',
+                        type: 'fee_collection',
+                        slotId: _selectedMember!.slotId,
+                        notes: _notesController.text.trim(),
+                        createdAt: DateTime.now(),
+                        updatedAt: DateTime.now(),
+                      );
+                      await PaymentRepository.instance.savePaymentRecord(payment);
+
+                      // 2. Update member paymentStatus to 'paid'
+                      final updatedMember = _selectedMember!.copyWith(
+                        paymentStatus: 'paid',
+                        updatedAt: DateTime.now(),
+                      );
+                      await MemberRepository.instance.updateMember(updatedMember);
+
+                      // 3. Update dashboard cubit state
+                      if (locator.isRegistered<DashboardCubit>()) {
+                        locator<DashboardCubit>().fetchDashboardData();
+                      }
+
+                      if (context.mounted) {
+                        Navigator.pop(context);
+                        XHelperFunctions.showSnackBar('Payment collected successfully!');
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        XHelperFunctions.showSnackBar('Error collecting payment: $e', isError: true);
+                      }
+                    } finally {
                       if (mounted) {
                         setState(() {
                           _isLoading = false;
                         });
-                        Navigator.pop(context);
-                        XHelperFunctions.showSnackBar('Payment collected successfully!');
                       }
-                    });
+                    }
                   }
                 },
               ),

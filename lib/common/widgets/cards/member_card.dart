@@ -23,7 +23,9 @@ class XMemberCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dark = XHelperFunctions.isDarkMode(context);
-    final statusColor = XHelperFunctions.getMemberStatusColor(member.status);
+    final hasNoSeat = member.seatId.isEmpty || member.seatNumber == 'Unassigned';
+    final computedStatus = hasNoSeat ? 'inactive' : member.status;
+    final statusColor = XHelperFunctions.getMemberStatusColor(computedStatus);
 
     return GestureDetector(
       onTap: onTap,
@@ -122,7 +124,7 @@ class XMemberCard extends StatelessWidget {
                           border: Border.all(color: statusColor.withValues(alpha: 0.2)),
                         ),
                         child: Text(
-                          _capitalize(member.status.replaceAll('_', ' ')),
+                          _capitalize(computedStatus.replaceAll('_', ' ')),
                           style: TextStyle(
                             color: statusColor,
                             fontSize: 10,

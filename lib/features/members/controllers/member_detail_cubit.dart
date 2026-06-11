@@ -1,8 +1,10 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:edox_library/data/repositories/members/member_repository.dart';
 import 'package:edox_library/data/repositories/activity/activity_repository.dart';
+import 'package:edox_library/data/repositories/payments/payment_repository.dart';
 import 'package:edox_library/features/members/models/member_model.dart';
 import 'package:edox_library/features/dashboard/models/activity_model.dart';
+import 'package:edox_library/features/payments/models/payment_model.dart';
 
 abstract class MemberDetailState {}
 
@@ -47,43 +49,41 @@ class MemberDetailCubit extends Cubit<MemberDetailState> {
     }
   }
 
-  Future<void> renewMembership(MemberModel member, String selectedPlan) async {
+  Future<void> renewMembership(MemberModel member, DateTime newExpiry, double fee) async {
     emit(MemberDetailActionLoading());
     try {
-      DateTime newExpiry = member.expiryDate;
-      if (newExpiry.isBefore(DateTime.now())) {
-        newExpiry = DateTime.now();
-      }
-      
-      String planName = 'Monthly';
-      if (selectedPlan == 'quarterly') {
-        newExpiry = newExpiry.add(const Duration(days: 90));
-        planName = 'Quarterly';
-      } else if (selectedPlan == 'half_yearly') {
-        newExpiry = newExpiry.add(const Duration(days: 180));
-        planName = 'Half Yearly';
-      } else if (selectedPlan == 'annual') {
-        newExpiry = newExpiry.add(const Duration(days: 365));
-        planName = 'Annual';
-      } else {
-        newExpiry = newExpiry.add(const Duration(days: 30));
-      }
-
       final updatedMember = member.copyWith(
         expiryDate: newExpiry,
-        planId: selectedPlan,
-        planName: planName,
+        planId: 'manual',
+        planName: 'Manual Plan',
         status: 'active',
         updatedAt: DateTime.now(),
       );
 
       await _memberRepository.updateMember(updatedMember);
 
+      final payment = PaymentModel(
+        id: '',
+        memberId: member.id,
+        memberName: member.fullName,
+        amount: fee,
+        paymentMethod: 'cash',
+        type: 'renewal',
+        slotId: member.slotId,
+        date: DateTime.now(),
+        planId: 'manual',
+        planName: 'Manual Plan',
+        notes: 'Membership Renewal',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+      await PaymentRepository.instance.savePaymentRecord(payment);
+
       final activity = ActivityModel(
         id: '',
         type: 'member',
         title: 'Membership Renewed',
-        description: '${member.fullName} renewed for $planName',
+        description: '${member.fullName} renewed membership',
         memberId: member.id,
         createdAt: DateTime.now(),
       );

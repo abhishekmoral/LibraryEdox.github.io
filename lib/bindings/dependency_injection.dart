@@ -24,6 +24,8 @@ import 'package:edox_library/features/members/controllers/members_cubit.dart';
 import 'package:edox_library/features/dashboard/controllers/dashboard_cubit.dart';
 import 'package:edox_library/features/personalization/controllers/library_cubit.dart';
 import 'package:edox_library/features/settings/controllers/theme_cubit.dart';
+import 'package:edox_library/features/settings/controllers/settings_cubit.dart';
+import 'package:edox_library/features/subscription/controllers/subscription_cubit.dart';
 
 final locator = GetIt.instance;
 
@@ -52,4 +54,6 @@ Future<void> setupDependencies() async {
   locator.registerLazySingleton<DashboardCubit>(() => DashboardCubit());
   locator.registerLazySingleton<LibraryCubit>(() => LibraryCubit());
   locator.registerLazySingleton<ThemeCubit>(() => ThemeCubit());
+  locator.registerLazySingleton<SettingsCubit>(() => SettingsCubit());
+  locator.registerLazySingleton<SubscriptionCubit>(() => SubscriptionCubit());
 }

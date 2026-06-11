@@ -119,6 +119,9 @@ class MembersListScreen extends StatelessWidget {
                                 case 'expiring soon':
                                   chipGradient = [const Color(0xFFFFC837), const Color(0xFFFFE08A)];
                                   break;
+                                case 'inactive':
+                                  chipGradient = [const Color(0xFF707E94), const Color(0xFFA0AEC0)];
+                                  break;
                                 default:
                                   chipGradient = [XColors.primary, const Color(0xFF868CFF)];
                               }

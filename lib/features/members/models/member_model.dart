@@ -19,6 +19,7 @@ class MemberModel {
   final String paymentStatus;
   final String status;
   final String notes;
+  final DateTime? deletedAt;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -41,6 +42,7 @@ class MemberModel {
     required this.paymentStatus,
     required this.status,
     required this.notes,
+    this.deletedAt,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -78,6 +80,7 @@ class MemberModel {
         paymentStatus: 'pending',
         status: 'active',
         notes: '',
+        deletedAt: null,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );
@@ -107,6 +110,7 @@ class MemberModel {
       paymentStatus: data?['paymentStatus'] ?? 'pending',
       status: data?['status'] ?? 'active',
       notes: data?['notes'] ?? '',
+      deletedAt: (data?['deletedAt'] as Timestamp?)?.toDate(),
       createdAt:
           (data?['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       updatedAt:
@@ -133,6 +137,7 @@ class MemberModel {
         'paymentStatus': paymentStatus,
         'status': status,
         'notes': notes,
+        if (deletedAt != null) 'deletedAt': Timestamp.fromDate(deletedAt!),
         'createdAt': Timestamp.fromDate(createdAt),
         'updatedAt': Timestamp.fromDate(updatedAt),
       };
@@ -157,6 +162,7 @@ class MemberModel {
     String? paymentStatus,
     String? status,
     String? notes,
+    DateTime? deletedAt,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -179,6 +185,7 @@ class MemberModel {
       paymentStatus: paymentStatus ?? this.paymentStatus,
       status: status ?? this.status,
       notes: notes ?? this.notes,
+      deletedAt: deletedAt ?? this.deletedAt,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

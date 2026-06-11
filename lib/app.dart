@@ -17,6 +17,7 @@ import 'package:edox_library/features/payments/screens/collect_payment/collect_p
 import 'package:edox_library/features/plans/screens/plans_screen.dart';
 import 'package:edox_library/features/reminders/screens/reminders_screen.dart';
 import 'package:edox_library/features/subscription/screens/subscription_screen.dart';
+import 'package:edox_library/features/subscription/screens/plan_expired_screen.dart';
 import 'package:edox_library/navigation_menu.dart';
 
 // Cubits
@@ -27,6 +28,10 @@ import 'package:edox_library/features/members/controllers/members_cubit.dart';
 import 'package:edox_library/features/dashboard/controllers/dashboard_cubit.dart';
 import 'package:edox_library/features/personalization/controllers/library_cubit.dart';
 import 'package:edox_library/features/settings/controllers/theme_cubit.dart';
+import 'package:edox_library/features/settings/controllers/settings_cubit.dart';
+import 'package:edox_library/features/subscription/controllers/subscription_cubit.dart';
+
+
 
 class App extends StatelessWidget {
   const App({super.key});
@@ -40,8 +45,10 @@ class App extends StatelessWidget {
         BlocProvider<SeatsCubit>(create: (context) => locator<SeatsCubit>()),
         BlocProvider<MembersCubit>(create: (context) => locator<MembersCubit>()),
         BlocProvider<DashboardCubit>(create: (context) => locator<DashboardCubit>()),
-        BlocProvider<LibraryCubit>(create: (context) => locator<LibraryCubit>()),
+        BlocProvider<LibraryCubit>(create: (context) => locator<LibraryCubit>(), lazy: false),
         BlocProvider<ThemeCubit>(create: (context) => locator<ThemeCubit>()),
+        BlocProvider<SettingsCubit>(create: (context) => locator<SettingsCubit>()),
+        BlocProvider<SubscriptionCubit>(create: (context) => locator<SubscriptionCubit>()),
       ],
       child: BlocBuilder<ThemeCubit, ThemeMode>(
         builder: (context, themeMode) {
@@ -80,10 +87,32 @@ class AuthWrapper extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<AuthCubit, AuthState>(
-      builder: (context, state) {
-        if (state is Authenticated) {
-          return const NavigationMenu();
-        } else if (state is Unauthenticated) {
+      builder: (context, authState) {
+        if (authState is Authenticated) {
+          return BlocBuilder<SubscriptionCubit, SubscriptionState>(
+            builder: (context, subState) {
+              if (subState is SubscriptionLoaded) {
+                if (subState.subscription.isActive) {
+                  return const NavigationMenu();
+                } else {
+                  return const PlanExpiredScreen();
+                }
+              } else if (subState is SubscriptionFailure) {
+                return Scaffold(
+                  body: Center(
+                    child: Text('Failed to load subscription: ${subState.message}'),
+                  ),
+                );
+              } else {
+                return const Scaffold(
+                  body: Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                );
+              }
+            },
+          );
+        } else if (authState is Unauthenticated) {
           return const LoginScreen();
         } else {
           return const Scaffold(

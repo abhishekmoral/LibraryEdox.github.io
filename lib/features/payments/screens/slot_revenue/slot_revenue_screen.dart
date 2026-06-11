@@ -55,17 +55,21 @@ class _SlotRevenueScreenState extends State<SlotRevenueScreen> {
       final paymentRepo = locator<PaymentRepository>();
       final memberRepo = locator<MemberRepository>();
 
-      final allSlots = [
-        SlotModel(
-          id: 'default',
-          name: 'Complete',
-          startTime: '12:00 AM',
-          endTime: '11:59 PM',
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        ),
-        ...slotsCubit.state.slots,
-      ];
+      final loadedSlots = slotsCubit.state.slots;
+      final List<SlotModel> allSlots = [];
+      if (!loadedSlots.any((s) => s.id == 'default')) {
+        allSlots.add(
+          SlotModel(
+            id: 'default',
+            name: 'Complete Shift',
+            startTime: '12:00 AM',
+            endTime: '11:59 PM',
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+        );
+      }
+      allSlots.addAll(loadedSlots);
 
       final List<SlotRevenueData> list = [];
       for (final slot in allSlots) {

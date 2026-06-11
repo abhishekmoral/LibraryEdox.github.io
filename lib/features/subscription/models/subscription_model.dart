@@ -8,6 +8,8 @@ class SubscriptionModel {
   final String status;
   final String billing;
   final DateTime createdAt;
+  final String libraryName;
+  final String mobile;
 
   const SubscriptionModel({
     required this.id,
@@ -17,6 +19,8 @@ class SubscriptionModel {
     required this.status,
     required this.billing,
     required this.createdAt,
+    this.libraryName = '',
+    this.mobile = '',
   });
 
   /// Whether the subscription is currently active (not expired and status is 'active').
@@ -38,6 +42,8 @@ class SubscriptionModel {
         status: 'active',
         billing: 'monthly',
         createdAt: DateTime.now(),
+        libraryName: '',
+        mobile: '',
       );
 
   /// Create a [SubscriptionModel] from a Firestore document snapshot.
@@ -55,6 +61,8 @@ class SubscriptionModel {
       billing: data?['billing'] ?? 'monthly',
       createdAt:
           (data?['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      libraryName: data?['libraryName'] ?? '',
+      mobile: data?['mobile'] ?? '',
     );
   }
 
@@ -66,6 +74,8 @@ class SubscriptionModel {
         'status': status,
         'billing': billing,
         'createdAt': Timestamp.fromDate(createdAt),
+        'libraryName': libraryName,
+        'mobile': mobile,
       };
 
   /// Create a copy of this [SubscriptionModel] with the given fields replaced.
@@ -77,6 +87,8 @@ class SubscriptionModel {
     String? status,
     String? billing,
     DateTime? createdAt,
+    String? libraryName,
+    String? mobile,
   }) {
     return SubscriptionModel(
       id: id ?? this.id,
@@ -86,6 +98,8 @@ class SubscriptionModel {
       status: status ?? this.status,
       billing: billing ?? this.billing,
       createdAt: createdAt ?? this.createdAt,
+      libraryName: libraryName ?? this.libraryName,
+      mobile: mobile ?? this.mobile,
     );
   }
 }

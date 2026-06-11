@@ -49,8 +49,9 @@ class MembersCubit extends Cubit<MembersState> {
   final _memberRepository = MemberRepository.instance;
   StreamSubscription<List<MemberModel>>? _membersSubscription;
   StreamSubscription<User?>? _authSubscription;
+  StreamSubscription<SlotsState>? _slotsSubscription;
   final searchController = TextEditingController();
-  final filters = ['All', 'Active', 'Expired', 'Expiring Soon'];
+  final filters = ['All', 'Active', 'Expired', 'Expiring Soon', 'Inactive'];
 
   MembersCubit() : super(MembersState(
     allMembers: [],
@@ -78,6 +79,10 @@ class MembersCubit extends Cubit<MembersState> {
           currentSlotId: 'default',
         ));
       }
+    });
+
+    _slotsSubscription = locator<SlotsCubit>().stream.listen((slotsState) {
+      _updateList();
     });
   }
 
@@ -155,11 +160,13 @@ class MembersCubit extends Cubit<MembersState> {
     // Apply status filter
     final filter = state.selectedFilter;
     if (filter == 'Active') {
-      list = list.where((m) => m.status == 'active').toList();
+      list = list.where((m) => m.status == 'active' && m.seatId.isNotEmpty && m.seatNumber != 'Unassigned').toList();
     } else if (filter == 'Expired') {
-      list = list.where((m) => m.status == 'expired').toList();
+      list = list.where((m) => m.status == 'expired' && m.seatId.isNotEmpty && m.seatNumber != 'Unassigned').toList();
     } else if (filter == 'Expiring Soon') {
-      list = list.where((m) => m.isExpiringSoon).toList();
+      list = list.where((m) => m.isExpiringSoon && m.seatId.isNotEmpty && m.seatNumber != 'Unassigned').toList();
+    } else if (filter == 'Inactive') {
+      list = list.where((m) => m.seatId.isEmpty || m.seatNumber == 'Unassigned').toList();
     }
     
     // Apply search
@@ -180,6 +187,7 @@ class MembersCubit extends Cubit<MembersState> {
   Future<void> close() {
     _membersSubscription?.cancel();
     _authSubscription?.cancel();
+    _slotsSubscription?.cancel();
     searchController.dispose();
     return super.close();
   }

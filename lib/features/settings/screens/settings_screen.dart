@@ -13,7 +13,9 @@ import 'package:edox_library/features/authentication/models/library_model.dart';
 import 'package:edox_library/features/slots/controllers/slots_cubit.dart';
 import 'package:edox_library/features/slots/models/slot_model.dart';
 import 'package:edox_library/features/settings/controllers/theme_cubit.dart';
+import 'package:edox_library/features/settings/controllers/settings_cubit.dart';
 import 'package:edox_library/routes/app_routes.dart';
+import 'package:edox_library/features/subscription/controllers/subscription_cubit.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -120,26 +122,63 @@ class SettingsScreen extends StatelessWidget {
               const SizedBox(height: XSizes.spaceBtwItems),
 
               /// --- Notifications
-              _SettingsSection(
-                title: 'Notifications',
-                dark: dark,
-                children: [
-                  _SettingsTile(
-                    icon: Iconsax.message,
-                    title: 'WhatsApp Reminders',
-                    subtitle: 'Send expiry reminders via WhatsApp',
+              BlocBuilder<SettingsCubit, SettingsState>(
+                builder: (context, settingsState) {
+                  bool whatsappVal = true;
+                  bool smsVal = false;
+                  List<int> reminderDays = [7, 5, 3, 1];
+
+                  if (settingsState is SettingsLoaded) {
+                    whatsappVal = settingsState.settings.whatsappEnabled;
+                    smsVal = settingsState.settings.smsEnabled;
+                    reminderDays = settingsState.settings.reminderDays;
+                  }
+
+                  final daysLabel = reminderDays.map((d) => d == 0 ? 'Expiry day' : '$d days').join(', ');
+                  final reminderSubtitle = daysLabel.isEmpty ? 'No reminder days' : '$daysLabel before expiry';
+
+                  return _SettingsSection(
+                    title: 'Notifications',
                     dark: dark,
-                    trailing: Switch(value: true, activeColor: XColors.primary, onChanged: (v) {}),
-                  ),
-                  _SettingsTile(
-                    icon: Iconsax.sms,
-                    title: 'SMS Reminders',
-                    subtitle: 'Send expiry reminders via SMS',
-                    dark: dark,
-                    trailing: Switch(value: false, activeColor: XColors.primary, onChanged: (v) {}),
-                  ),
-                  _SettingsTile(icon: Iconsax.notification, title: 'Reminder Settings', subtitle: '7, 5, 3, 1 days before expiry', dark: dark, onTap: () {}),
-                ],
+                    children: [
+                      _SettingsTile(
+                        icon: Iconsax.message,
+                        title: 'WhatsApp Reminders',
+                        subtitle: 'Send expiry reminders via WhatsApp',
+                        dark: dark,
+                        trailing: Switch(
+                          value: whatsappVal,
+                          activeColor: XColors.primary,
+                          onChanged: settingsState is SettingsLoaded
+                              ? (v) => context.read<SettingsCubit>().toggleWhatsApp(v)
+                              : null,
+                        ),
+                      ),
+                      _SettingsTile(
+                        icon: Iconsax.sms,
+                        title: 'SMS Reminders',
+                        subtitle: 'Send expiry reminders via SMS',
+                        dark: dark,
+                        trailing: Switch(
+                          value: smsVal,
+                          activeColor: XColors.primary,
+                          onChanged: settingsState is SettingsLoaded
+                              ? (v) => context.read<SettingsCubit>().toggleSMS(v)
+                              : null,
+                        ),
+                      ),
+                      _SettingsTile(
+                        icon: Iconsax.notification,
+                        title: 'Reminder Settings',
+                        subtitle: reminderSubtitle,
+                        dark: dark,
+                        onTap: settingsState is SettingsLoaded
+                            ? () => _showReminderDaysDialog(context, reminderDays, dark)
+                            : null,
+                      ),
+                    ],
+                  );
+                },
               ),
               const SizedBox(height: XSizes.spaceBtwItems),
 
@@ -193,21 +232,9 @@ class SettingsScreen extends StatelessWidget {
                   _SettingsTile(
                     icon: Iconsax.password_check, 
                     title: 'Change Password', 
-                    subtitle: 'Send a password reset email', 
+                    subtitle: 'Change your account password', 
                     dark: dark, 
-                    onTap: () async {
-                      try {
-                        final email = AuthenticationRepository.instance.currentUser?.email;
-                        if (email != null && email.isNotEmpty) {
-                          await AuthenticationRepository.instance.sendPasswordResetEmail(email);
-                          XHelperFunctions.showSnackBar('Password Reset Email Sent! Check your inbox.');
-                        } else {
-                          XHelperFunctions.showSnackBar('Error: No email associated with this account.', isError: true);
-                        }
-                      } catch (e) {
-                        XHelperFunctions.showSnackBar('Error: ${e.toString()}', isError: true);
-                      }
-                    }
+                    onTap: () => _showChangePasswordDialog(context, dark),
                   ),
                   _SettingsTile(
                     icon: Iconsax.cloud, 
@@ -220,12 +247,23 @@ class SettingsScreen extends StatelessWidget {
                       );
                     }
                   ),
-                  _SettingsTile(
-                    icon: Iconsax.crown_1, 
-                    title: 'Subscription', 
-                    subtitle: 'Trial Plan - 30 days remaining', 
-                    dark: dark, 
-                    onTap: () => Navigator.pushNamed(context, XRoutes.subscription),
+                  BlocBuilder<SubscriptionCubit, SubscriptionState>(
+                    builder: (context, subState) {
+                      String planLabel = 'Loading...';
+                      if (subState is SubscriptionLoaded) {
+                        final sub = subState.subscription;
+                        planLabel = '${sub.planName} Plan - ${sub.daysRemaining} days remaining';
+                      } else if (subState is SubscriptionFailure) {
+                        planLabel = 'Error loading subscription';
+                      }
+                      return _SettingsTile(
+                        icon: Iconsax.crown_1, 
+                        title: 'Subscription', 
+                        subtitle: planLabel, 
+                        dark: dark, 
+                        onTap: () => Navigator.pushNamed(context, XRoutes.subscription),
+                      );
+                    },
                   ),
                 ],
               ),
@@ -261,6 +299,213 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
+  void _showChangePasswordDialog(BuildContext context, bool dark) {
+    final currentPasswordController = TextEditingController();
+    final newPasswordController = TextEditingController();
+    final confirmPasswordController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    bool isLoading = false;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (stateContext, setDialogState) {
+            return AlertDialog(
+              backgroundColor: dark ? const Color(0xFF0B1437) : XColors.white,
+              title: Row(
+                children: [
+                  const Icon(Iconsax.password_check, color: XColors.primary, size: 28),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Change Password',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: dark ? XColors.white : XColors.textPrimary,
+                        ),
+                  ),
+                ],
+              ),
+              content: Form(
+                key: formKey,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Please enter your current password to verify your identity, then choose a new password.',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: dark ? XColors.softGrey : XColors.textSecondary,
+                            ),
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: currentPasswordController,
+                        obscureText: true,
+                        decoration: InputDecoration(
+                          labelText: 'Current Password',
+                          prefixIcon: const Icon(Iconsax.key),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Current password is required';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: newPasswordController,
+                        obscureText: true,
+                        decoration: InputDecoration(
+                          labelText: 'New Password',
+                          prefixIcon: const Icon(Iconsax.lock),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'New password is required';
+                          }
+                          if (value.length < 6) {
+                            return 'Password must be at least 6 characters';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: confirmPasswordController,
+                        obscureText: true,
+                        decoration: InputDecoration(
+                          labelText: 'Confirm New Password',
+                          prefixIcon: const Icon(Iconsax.lock_1),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please confirm your new password';
+                          }
+                          if (value != newPasswordController.text) {
+                            return 'Passwords do not match';
+                          }
+                          return null;
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isLoading ? null : () => Navigator.pop(dialogContext),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: isLoading
+                      ? null
+                      : () async {
+                          if (!formKey.currentState!.validate()) return;
+
+                          setDialogState(() => isLoading = true);
+                          try {
+                            await AuthenticationRepository.instance.updatePassword(
+                              currentPasswordController.text,
+                              newPasswordController.text,
+                            );
+                            Navigator.pop(dialogContext);
+                            XHelperFunctions.showSnackBar('Password updated successfully!');
+                          } catch (e) {
+                            setDialogState(() => isLoading = false);
+                            XHelperFunctions.showSnackBar(e.toString(), isError: true);
+                          }
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: XColors.primary,
+                  ),
+                  child: isLoading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: XColors.white,
+                          ),
+                        )
+                      : const Text('Update'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showReminderDaysDialog(BuildContext parentContext, List<int> currentDays, bool dark) {
+    final availableDays = [10, 7, 5, 3, 2, 1, 0];
+    final selectedDays = List<int>.from(currentDays);
+
+    showDialog(
+      context: parentContext,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (stateContext, setDialogState) {
+            return AlertDialog(
+              backgroundColor: dark ? const Color(0xFF0B1437) : XColors.white,
+              title: Text(
+                'Select Reminder Days',
+                style: Theme.of(parentContext).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: dark ? XColors.white : XColors.textPrimary,
+                    ),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: availableDays.map((day) {
+                  final isSelected = selectedDays.contains(day);
+                  final label = day == 0 ? 'On Expiry Day' : '$day Days Before';
+                  return CheckboxListTile(
+                    value: isSelected,
+                    title: Text(
+                      label,
+                      style: TextStyle(color: dark ? XColors.softGrey : XColors.textPrimary),
+                    ),
+                    activeColor: XColors.primary,
+                    onChanged: (val) {
+                      setDialogState(() {
+                        if (val == true) {
+                          selectedDays.add(day);
+                          selectedDays.sort((a, b) => b.compareTo(a));
+                        } else {
+                          selectedDays.remove(day);
+                        }
+                      });
+                    },
+                  );
+                }).toList(),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    parentContext.read<SettingsCubit>().updateReminderDays(selectedDays);
+                    Navigator.pop(dialogContext);
+                  },
+                  child: const Text('Save'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   void _showSlotsBottomSheet(BuildContext parentContext, bool dark) {
     showModalBottomSheet(
       context: parentContext,
@@ -293,42 +538,14 @@ class SettingsScreen extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Select Slot', style: Theme.of(parentContext).textTheme.headlineSmall),
-                    IconButton(
-                      onPressed: () {
-                        final slotsCubit = parentContext.read<SlotsCubit>();
-                        final completeDayCount = slotsCubit.state.slots.where((s) => s.startTime == '12:00 AM' && s.endTime == '11:59 PM').length;
-                        final standardCount = slotsCubit.state.slots.length - completeDayCount;
-
-                        if (standardCount >= 3 && completeDayCount >= 1) {
-                          XHelperFunctions.showSnackBar(
-                            'Maximum of 3 custom timing slots and 1 complete day slot have been created.',
-                            isError: true,
-                          );
-                        } else {
-                          Navigator.pop(sheetContext);
-                          _showCreateSlotBottomSheet(parentContext, dark);
-                        }
-                      },
-                      icon: const Icon(Iconsax.add_circle, color: XColors.primary, size: 28),
-                    ),
+                    Text('Select Slot / Shift', style: Theme.of(parentContext).textTheme.headlineSmall),
                   ],
                 ),
                 const SizedBox(height: XSizes.spaceBtwItems),
                 Flexible(
                   child: BlocBuilder<SlotsCubit, SlotsState>(
                     builder: (context, slotState) {
-                      final List<SlotModel> displaySlots = [
-                        SlotModel(
-                          id: 'default',
-                          name: 'Complete',
-                          startTime: '12:00 AM',
-                          endTime: '11:59 PM',
-                          createdAt: DateTime.now(),
-                          updatedAt: DateTime.now(),
-                        ),
-                        ...slotState.slots,
-                      ];
+                      final List<SlotModel> displaySlots = slotState.slots;
 
                       return ListView.separated(
                         shrinkWrap: true,
@@ -385,38 +602,16 @@ class SettingsScreen extends StatelessWidget {
                                   Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      if (slot.id != 'all' && slot.id != 'default')
-                                        GestureDetector(
-                                          onTap: () {
-                                            showDialog(
-                                              context: context,
-                                              builder: (dialogContext) {
-                                                return AlertDialog(
-                                                  title: const Text('Delete Slot'),
-                                                  content: Text('Are you sure you want to delete the slot "${slot.name}"?'),
-                                                  actions: [
-                                                    TextButton(
-                                                      onPressed: () => Navigator.pop(dialogContext),
-                                                      child: const Text('Cancel'),
-                                                    ),
-                                                    ElevatedButton(
-                                                      onPressed: () {
-                                                        context.read<SlotsCubit>().deleteSlot(context, slot.id);
-                                                        Navigator.pop(dialogContext);
-                                                      },
-                                                      style: ElevatedButton.styleFrom(backgroundColor: XColors.error),
-                                                      child: const Text('Delete', style: TextStyle(color: Colors.white)),
-                                                    ),
-                                                  ],
-                                                );
-                                              },
-                                            );
-                                          },
-                                          child: const Padding(
-                                            padding: EdgeInsets.symmetric(horizontal: 8),
-                                            child: Icon(Iconsax.trash, color: XColors.error, size: 20),
-                                          ),
+                                      GestureDetector(
+                                        onTap: () {
+                                          Navigator.pop(sheetContext);
+                                          _showEditSlotBottomSheet(parentContext, slot, dark);
+                                        },
+                                        child: const Padding(
+                                          padding: EdgeInsets.symmetric(horizontal: 8),
+                                          child: Icon(Iconsax.edit, color: XColors.primary, size: 20),
                                         ),
+                                      ),
                                       if (isSelected)
                                         const Icon(Iconsax.tick_circle, color: XColors.primary),
                                     ],
@@ -439,24 +634,11 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  void _showCreateSlotBottomSheet(BuildContext parentContext, bool dark) {
-    final nameCtrl = TextEditingController();
-    final startCtrl = TextEditingController();
-    final endCtrl = TextEditingController();
+  void _showEditSlotBottomSheet(BuildContext parentContext, SlotModel slot, bool dark) {
+    final nameCtrl = TextEditingController(text: slot.name);
+    final startCtrl = TextEditingController(text: slot.startTime);
+    final endCtrl = TextEditingController(text: slot.endTime);
     final formKey = GlobalKey<FormState>();
-    final isWholeDayNotifier = ValueNotifier<bool>(false);
-
-    // Listen to changes on isWholeDayNotifier to pre-fill or clear time fields
-    isWholeDayNotifier.addListener(() {
-      final val = isWholeDayNotifier.value;
-      if (val) {
-        startCtrl.text = '12:00 AM';
-        endCtrl.text = '11:59 PM';
-      } else {
-        startCtrl.clear();
-        endCtrl.clear();
-      }
-    });
 
     showModalBottomSheet(
       context: parentContext,
@@ -491,118 +673,73 @@ class SettingsScreen extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: XSizes.spaceBtwItems),
-                      Text('Create Custom Slot', style: Theme.of(sheetContext).textTheme.headlineSmall),
+                      Text('Adjust Shift Timing', style: Theme.of(sheetContext).textTheme.headlineSmall),
                       const SizedBox(height: 4),
-                      Text('Specify Gym slot timing and name', style: Theme.of(sheetContext).textTheme.bodySmall),
+                      Text('Edit the start and end times for this predefined shift.', style: Theme.of(sheetContext).textTheme.bodySmall),
                       const SizedBox(height: XSizes.spaceBtwSections),
                       XTextField(
                         controller: nameCtrl,
-                        label: 'Slot Name',
-                        hint: 'e.g. Morning, Afternoon, Evening',
+                        label: 'Shift Name',
                         prefixIcon: Iconsax.edit,
-                        validator: (v) => v == null || v.trim().isEmpty ? 'Please enter slot name' : null,
+                        enabled: false,
+                        readOnly: true,
                       ),
                       const SizedBox(height: XSizes.spaceBtwItems),
-                      ValueListenableBuilder<bool>(
-                        valueListenable: isWholeDayNotifier,
-                        builder: (context, isWholeDay, _) {
-                          return Container(
-                            decoration: BoxDecoration(
-                              border: Border.all(color: dark ? XColors.borderPrimary : XColors.borderSecondary),
-                              borderRadius: BorderRadius.circular(XSizes.inputFieldRadius),
-                            ),
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Row(
-                                  children: [
-                                    Icon(Iconsax.calendar_1, color: dark ? XColors.white : XColors.black),
-                                    const SizedBox(width: 12),
-                                    Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text('Whole Day Timing', style: Theme.of(context).textTheme.titleSmall),
-                                        Text('12:00 AM - 11:59 PM', style: Theme.of(context).textTheme.bodySmall),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                                Switch(
-                                  value: isWholeDay,
-                                  activeColor: XColors.primary,
-                                  onChanged: (val) => isWholeDayNotifier.value = val,
-                                ),
-                              ],
-                            ),
+                      XTextField(
+                        controller: startCtrl,
+                        label: 'Start Time',
+                        hint: 'Select Start Time',
+                        prefixIcon: Iconsax.clock,
+                        readOnly: true,
+                        onTap: () async {
+                          final TimeOfDay? picked = await showTimePicker(
+                            context: sheetContext,
+                            initialTime: const TimeOfDay(hour: 7, minute: 0),
                           );
-                        }
+                          if (picked != null) {
+                            final hour = picked.hourOfPeriod == 0 ? 12 : picked.hourOfPeriod;
+                            final minute = picked.minute.toString().padLeft(2, '0');
+                            final period = picked.period == DayPeriod.am ? 'AM' : 'PM';
+                            startCtrl.text = '$hour:$minute $period';
+                          }
+                        },
+                        validator: (v) => v == null || v.trim().isEmpty ? 'Please select start time' : null,
                       ),
                       const SizedBox(height: XSizes.spaceBtwItems),
-                      ValueListenableBuilder<bool>(
-                        valueListenable: isWholeDayNotifier,
-                        builder: (context, isWholeDay, _) {
-                          return XTextField(
-                            controller: startCtrl,
-                            label: 'Start Time',
-                            hint: 'Select Start Time',
-                            prefixIcon: Iconsax.clock,
-                            readOnly: true,
-                            enabled: !isWholeDay,
-                            onTap: isWholeDay ? null : () async {
-                              final TimeOfDay? picked = await showTimePicker(
-                                context: context,
-                                initialTime: const TimeOfDay(hour: 5, minute: 0),
-                              );
-                              if (picked != null) {
-                                final hour = picked.hourOfPeriod == 0 ? 12 : picked.hourOfPeriod;
-                                final minute = picked.minute.toString().padLeft(2, '0');
-                                final period = picked.period == DayPeriod.am ? 'AM' : 'PM';
-                                startCtrl.text = '$hour:$minute $period';
-                              }
-                            },
-                            validator: (v) => v == null || v.trim().isEmpty ? 'Please select start time' : null,
+                      XTextField(
+                        controller: endCtrl,
+                        label: 'End Time',
+                        hint: 'Select End Time',
+                        prefixIcon: Iconsax.clock,
+                        readOnly: true,
+                        onTap: () async {
+                          final TimeOfDay? picked = await showTimePicker(
+                            context: sheetContext,
+                            initialTime: const TimeOfDay(hour: 14, minute: 0),
                           );
-                        }
-                      ),
-                      const SizedBox(height: XSizes.spaceBtwItems),
-                      ValueListenableBuilder<bool>(
-                        valueListenable: isWholeDayNotifier,
-                        builder: (context, isWholeDay, _) {
-                          return XTextField(
-                            controller: endCtrl,
-                            label: 'End Time',
-                            hint: 'Select End Time',
-                            prefixIcon: Iconsax.clock,
-                            readOnly: true,
-                            enabled: !isWholeDay,
-                            onTap: isWholeDay ? null : () async {
-                              final TimeOfDay? picked = await showTimePicker(
-                                context: context,
-                                initialTime: const TimeOfDay(hour: 9, minute: 0),
-                              );
-                              if (picked != null) {
-                                final hour = picked.hourOfPeriod == 0 ? 12 : picked.hourOfPeriod;
-                                final minute = picked.minute.toString().padLeft(2, '0');
-                                final period = picked.period == DayPeriod.am ? 'AM' : 'PM';
-                                endCtrl.text = '$hour:$minute $period';
-                              }
-                            },
-                            validator: (v) => v == null || v.trim().isEmpty ? 'Please select end time' : null,
-                          );
-                        }
+                          if (picked != null) {
+                            final hour = picked.hourOfPeriod == 0 ? 12 : picked.hourOfPeriod;
+                            final minute = picked.minute.toString().padLeft(2, '0');
+                            final period = picked.period == DayPeriod.am ? 'AM' : 'PM';
+                            endCtrl.text = '$hour:$minute $period';
+                          }
+                        },
+                        validator: (v) => v == null || v.trim().isEmpty ? 'Please select end time' : null,
                       ),
                       const SizedBox(height: XSizes.spaceBtwSections),
                       XPrimaryButton(
-                        text: 'Create Slot',
-                        icon: Iconsax.add,
+                        text: 'Save Changes',
+                        icon: Iconsax.tick_circle,
                         onPressed: () async {
                           if (!formKey.currentState!.validate()) return;
-                          final success = await sheetContext.read<SlotsCubit>().createSlot(
+                          final updatedSlot = slot.copyWith(
+                            startTime: startCtrl.text.trim(),
+                            endTime: endCtrl.text.trim(),
+                            updatedAt: DateTime.now(),
+                          );
+                          final success = await sheetContext.read<SlotsCubit>().updateSlot(
                             parentContext,
-                            nameCtrl.text.trim(),
-                            startCtrl.text.trim(),
-                            endCtrl.text.trim(),
+                            updatedSlot,
                           );
                           if (success) {
                             Navigator.pop(sheetContext);

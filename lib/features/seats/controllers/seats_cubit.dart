@@ -52,6 +52,8 @@ class SeatsCubit extends Cubit<SeatsState> {
   final _activityRepository = ActivityRepository.instance;
   StreamSubscription<List<SeatModel>>? _seatsSubscription;
   StreamSubscription<User?>? _authSubscription;
+  StreamSubscription<SlotsState>? _slotsSubscription;
+  StreamSubscription<MembersState>? _membersSubscription;
 
   SeatsCubit() : super(SeatsState(
     allSeats: [],
@@ -78,6 +80,14 @@ class SeatsCubit extends Cubit<SeatsState> {
           currentSlotId: 'default',
         ));
       }
+    });
+
+    _slotsSubscription = locator<SlotsCubit>().stream.listen((slotsState) {
+      emit(state.copyWith(allSeats: List.from(state.allSeats)));
+    });
+
+    _membersSubscription = locator<MembersCubit>().stream.listen((membersState) {
+      emit(state.copyWith(allSeats: List.from(state.allSeats)));
     });
   }
 
@@ -137,10 +147,44 @@ class SeatsCubit extends Cubit<SeatsState> {
         (m) => m.seatNumber == seat.seatNumber && m.status == 'active' && (excludeMemberId == null || m.id != excludeMemberId)
       ).toList();
 
+      bool isCurrentTimeInShift(String startTimeStr, String endTimeStr) {
+        int parseTime(String timeStr) {
+          try {
+            final clean = timeStr.toUpperCase().trim();
+            final parts = clean.split(' ');
+            final timeParts = parts[0].split(':');
+            int hour = int.parse(timeParts[0]);
+            int minute = timeParts.length > 1 ? int.parse(timeParts[1]) : 0;
+            final isPm = parts.length > 1 && parts[1] == 'PM';
+            if (isPm && hour != 12) hour += 12;
+            if (!isPm && hour == 12) hour = 0;
+            return hour * 60 + minute;
+          } catch (e) {
+            return 0;
+          }
+        }
+
+        final start = parseTime(startTimeStr);
+        final end = parseTime(endTimeStr);
+        final now = DateTime.now();
+        final current = now.hour * 60 + now.minute;
+
+        if (start <= end) {
+          return current >= start && current <= end;
+        } else {
+          return current >= start || current <= end;
+        }
+      }
+
       MemberModel? member;
-      if (slotId == 'all') {
-        // "All" view: any active member on this seat counts
-        member = seatMembers.firstOrNull;
+      if (slotId == 'all' || slotId == 'default') {
+        // Prioritize the member whose shift covers the current time
+        member = seatMembers.firstWhereOrNull((m) {
+          final memberSlot = slotMap[m.slotId];
+          if (memberSlot == null) return false;
+          return isCurrentTimeInShift(memberSlot.startTime, memberSlot.endTime);
+        });
+        member ??= seatMembers.firstOrNull;
       } else if (viewedSlot == null) {
         // Unknown slot: fall back to exact match only
         member = seatMembers.firstWhereOrNull((m) => m.slotId == slotId);
@@ -191,17 +235,7 @@ class SeatsCubit extends Cubit<SeatsState> {
 
     final slotsCubit = locator<SlotsCubit>();
 
-    final allSystemSlots = [
-      SlotModel(
-        id: 'default',
-        name: 'Complete',
-        startTime: '12:00 AM',
-        endTime: '11:59 PM',
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      ),
-      ...slotsCubit.state.slots,
-    ];
+    final allSystemSlots = slotsCubit.state.slots;
 
     final slotMap = {for (var s in allSystemSlots) s.id: s};
 
@@ -344,6 +378,8 @@ class SeatsCubit extends Cubit<SeatsState> {
   Future<void> close() {
     _seatsSubscription?.cancel();
     _authSubscription?.cancel();
+    _slotsSubscription?.cancel();
+    _membersSubscription?.cancel();
     return super.close();
   }
 }

@@ -11,6 +11,10 @@ import 'package:edox_library/features/dashboard/controllers/dashboard_cubit.dart
 import 'package:edox_library/features/dashboard/models/dashboard_stats_model.dart';
 import 'package:edox_library/features/dashboard/models/activity_model.dart';
 import 'package:edox_library/features/payments/screens/slot_revenue/slot_revenue_screen.dart';
+import 'package:edox_library/features/members/controllers/members_cubit.dart';
+import 'package:collection/collection.dart';
+import 'package:edox_library/features/members/screens/member_detail/member_detail_screen.dart';
+import 'package:edox_library/features/members/screens/recycle_bin/recycle_bin_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -44,6 +48,10 @@ class DashboardScreen extends StatelessWidget {
                     _TopStatsRow(stats: state.stats, isLoading: state.isLoading),
                     const SizedBox(height: XSizes.spaceBtwItems),
                     _BottomStatsRow(stats: state.stats, isLoading: state.isLoading),
+                    const SizedBox(height: XSizes.spaceBtwSections),
+
+                    /// --- Slot-wise Seat Details
+                    _SlotWiseSeatDetails(slotDetails: state.slotSeatDetails, isLoading: state.isLoading),
                     const SizedBox(height: XSizes.spaceBtwSections),
 
                     /// --- Revenue Chart
@@ -311,6 +319,7 @@ class _TopStatsRow extends StatelessWidget {
             iconGradient: const [Color(0xFF4318FF), Color(0xFF868CFF)],
             dark: dark,
             onTap: () {
+              context.read<MembersCubit>().setSelectedFilter('All');
               TabChangeNotification(1).dispatch(context); // Members tab
             },
           ),
@@ -324,6 +333,7 @@ class _TopStatsRow extends StatelessWidget {
             iconGradient: const [Color(0xFF05CD99), Color(0xFF61EFCD)],
             dark: dark,
             onTap: () {
+              context.read<MembersCubit>().setSelectedFilter('Active');
               TabChangeNotification(1).dispatch(context); // Members tab
             },
           ),
@@ -372,6 +382,7 @@ class _BottomStatsRow extends StatelessWidget {
             dark: dark,
             subtitle: 'Members',
             onTap: () {
+              context.read<MembersCubit>().setSelectedFilter('Expired');
               TabChangeNotification(1).dispatch(context); // Members tab
             },
           ),
@@ -664,6 +675,16 @@ class _QuickActions extends StatelessWidget {
                 TabChangeNotification(1).dispatch(context); // Members tab
               },
             ),
+            _ActionItem(
+              icon: Iconsax.trash,
+              label: 'Recycle\nBin',
+              gradient: const [Color(0xFFFF4C61), Color(0xFFFF8F9E)],
+              dark: dark,
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const RecycleBinScreen()),
+              ),
+            ),
           ],
         ),
       ],
@@ -806,7 +827,24 @@ class _RecentActivity extends StatelessWidget {
                         iconGradient = [XColors.grey, XColors.softGrey];
                     }
 
+                    final memberId = a.memberId;
+                    final isMemberActivity = memberId != null && memberId.isNotEmpty;
+
                     return ListTile(
+                      onTap: isMemberActivity
+                          ? () {
+                              final membersCubit = context.read<MembersCubit>();
+                              final member = membersCubit.state.allMembers.firstWhereOrNull((m) => m.id == memberId);
+                              if (member != null) {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => MemberDetailScreen(member: member),
+                                  ),
+                                );
+                              }
+                            }
+                          : null,
                       leading: Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
@@ -861,5 +899,216 @@ class _RecentActivity extends StatelessWidget {
     } else {
       return '${diff.inDays}d ago';
     }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SLOT-WISE SEAT DETAILS
+// ═══════════════════════════════════════════════════════════════
+class _SlotWiseSeatDetails extends StatelessWidget {
+  const _SlotWiseSeatDetails({required this.slotDetails, required this.isLoading});
+  final List<SlotSeatDetails> slotDetails;
+  final bool isLoading;
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = XHelperFunctions.isDarkMode(context);
+
+    if (isLoading) return const SizedBox();
+    if (slotDetails.isEmpty) return const SizedBox();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const XSectionHeading(title: 'Slot-wise Seats'),
+        const SizedBox(height: XSizes.spaceBtwItems),
+        SizedBox(
+          height: 160,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: slotDetails.length,
+            physics: const BouncingScrollPhysics(),
+            itemBuilder: (context, index) {
+              final details = slotDetails[index];
+              return _SlotSeatCard(details: details, dark: dark);
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SlotSeatCard extends StatelessWidget {
+  const _SlotSeatCard({required this.details, required this.dark});
+  final SlotSeatDetails details;
+  final bool dark;
+
+  @override
+  Widget build(BuildContext context) {
+    final name = details.slotName.toLowerCase();
+    List<Color> gradientColors;
+    IconData icon;
+    
+    if (name.contains('morning')) {
+      gradientColors = const [Color(0xFFFFA07A), Color(0xFFFFD700)]; // Sunrise peach/gold
+      icon = Iconsax.sun_1;
+    } else if (name.contains('day')) {
+      gradientColors = const [Color(0xFF00BFFF), Color(0xFF00FA9A)]; // Day sky/teal
+      icon = Iconsax.sun_1;
+    } else if (name.contains('evening')) {
+      gradientColors = const [Color(0xFFFE8C00), Color(0xFFF83600)]; // Evening sunset
+      icon = Iconsax.clock;
+    } else if (name.contains('night')) {
+      gradientColors = const [Color(0xFF1F1C2C), Color(0xFF928DAB)]; // Night deep charcoal/indigo
+      icon = Iconsax.moon;
+    } else {
+      gradientColors = const [Color(0xFF6A11CB), Color(0xFF2575FC)]; // Complete purple/royal blue
+      icon = Iconsax.grid_2;
+    }
+
+    final double fillPercentage = details.totalSeats == 0
+        ? 0.0
+        : (details.occupiedSeats / details.totalSeats).clamp(0.0, 1.0);
+
+    return Container(
+      width: 175,
+      margin: const EdgeInsets.only(right: 14),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: dark ? XColors.darkCardBackground : XColors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: dark 
+              ? gradientColors[0].withValues(alpha: 0.15) 
+              : gradientColors[0].withValues(alpha: 0.08),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: dark 
+                ? Colors.black.withValues(alpha: 0.25) 
+                : gradientColors[0].withValues(alpha: 0.06),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: gradientColors,
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: [
+                    BoxShadow(
+                      color: gradientColors[0].withValues(alpha: 0.35),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Icon(icon, color: XColors.white, size: 16),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                decoration: BoxDecoration(
+                  color: gradientColors[0].withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  '${(fillPercentage * 100).toInt()}% Occupied',
+                  style: TextStyle(
+                    color: gradientColors[0],
+                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            details.slotName,
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                  letterSpacing: -0.2,
+                ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 2),
+          Text(
+            details.timing,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  fontSize: 10,
+                  color: dark ? XColors.textSecondary : XColors.darkGrey,
+                  fontWeight: FontWeight.w500,
+                ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const Spacer(),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: fillPercentage,
+              backgroundColor: dark ? XColors.darkGrey.withValues(alpha: 0.15) : XColors.lightGrey,
+              valueColor: AlwaysStoppedAnimation<Color>(gradientColors[0]),
+              minHeight: 6,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _SeatStat(label: 'Free', value: '${details.availableSeats}', color: const Color(0xFF05CD99)),
+              _SeatStat(label: 'Filled', value: '${details.occupiedSeats}', color: const Color(0xFFFF4C61)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SeatStat extends StatelessWidget {
+  const _SeatStat({required this.label, required this.value, required this.color});
+  final String label;
+  final String value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 5,
+          height: 5,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 4),
+        Text(
+          '$label: ',
+          style: const TextStyle(fontSize: 10, color: XColors.textSecondary, fontWeight: FontWeight.w500),
+        ),
+        Text(
+          value,
+          style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.w700),
+        ),
+      ],
+    );
   }
 }

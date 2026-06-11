@@ -177,70 +177,81 @@ class XSeatCard extends StatelessWidget {
               ),
             ] else ...[
               /// Occupied — show member info
-              Text(
-                seat.memberName,
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: -0.3,
-                      fontSize: 13,
-                    ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 2),
-              Row(
-                children: [
-                  Icon(Iconsax.call, size: 10, color: dark ? XColors.textSecondary : XColors.darkGrey),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Text(
-                      seat.memberMobile,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: dark ? XColors.textSecondary : XColors.darkGrey,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+              ...() {
+                final displayName = seat.memberName;
+                final displayMobile = seat.memberMobile;
+                final displayExpiry = seat.memberExpiry;
+                final bool showSingleDetails = displayName.isNotEmpty;
+
+                return [
+                  Text(
+                    displayName,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.3,
+                          fontSize: 13,
+                        ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              if (seat.memberExpiry != null)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: seat.isExpiringSoon
-                        ? XColors.warning.withValues(alpha: 0.1)
-                        : (dark ? XColors.darkGrey.withValues(alpha: 0.3) : XColors.lightGrey),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Iconsax.calendar,
-                        size: 9,
-                        color: seat.isExpiringSoon ? XColors.warning : (dark ? XColors.textSecondary : XColors.darkGrey),
-                      ),
-                      const SizedBox(width: 3),
-                      Flexible(
-                        child: Text(
-                          seat.isExpiringSoon
-                              ? '${seat.memberExpiry!.difference(DateTime.now()).inDays}d left'
-                              : XHelperFunctions.formatDate(seat.memberExpiry!),
-                          style: TextStyle(
-                            fontSize: 9,
-                            fontWeight: FontWeight.w600,
-                            color: seat.isExpiringSoon ? XColors.warning : (dark ? XColors.textSecondary : XColors.darkGrey),
+                  const SizedBox(height: 2),
+                  if (showSingleDetails) ...[
+                    Row(
+                      children: [
+                        Icon(Iconsax.call, size: 10, color: dark ? XColors.textSecondary : XColors.darkGrey),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            displayMobile,
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: dark ? XColors.textSecondary : XColors.darkGrey,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    if (displayExpiry != null)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: seat.isExpiringSoon
+                              ? XColors.warning.withValues(alpha: 0.1)
+                              : (dark ? XColors.darkGrey.withValues(alpha: 0.3) : XColors.lightGrey),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Iconsax.calendar,
+                              size: 9,
+                              color: seat.isExpiringSoon ? XColors.warning : (dark ? XColors.textSecondary : XColors.darkGrey),
+                            ),
+                            const SizedBox(width: 3),
+                            Flexible(
+                              child: Text(
+                                seat.isExpiringSoon
+                                    ? '${displayExpiry.difference(DateTime.now()).inDays}d left'
+                                    : XHelperFunctions.formatDate(displayExpiry),
+                                style: TextStyle(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w600,
+                                  color: seat.isExpiringSoon ? XColors.warning : (dark ? XColors.textSecondary : XColors.darkGrey),
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ],
-                  ),
-                ),
+                  ],
+                ];
+              }(),
             ],
 
             const SizedBox(height: 10),
@@ -252,24 +263,22 @@ class XSeatCard extends StatelessWidget {
               final slotCubit = context.read<SlotsCubit>();
               final membersCubit = context.read<MembersCubit>();
               
-              final slotMap = <String, SlotModel>{
-                'default': SlotModel(
+              final slotMap = <String, SlotModel>{};
+              for (final s in slotCubit.state.slots) {
+                slotMap[s.id] = s;
+              }
+              if (!slotMap.containsKey('default')) {
+                slotMap['default'] = SlotModel(
                   id: 'default',
-                  name: 'Complete',
+                  name: 'Complete Shift',
                   startTime: '12:00 AM',
                   endTime: '11:59 PM',
                   createdAt: DateTime.now(),
                   updatedAt: DateTime.now(),
-                ),
-              };
-              for (final s in slotCubit.state.slots) {
-                slotMap[s.id] = s;
+                );
               }
 
-              final allSlots = [
-                slotMap['default']!,
-                ...slotCubit.state.slots,
-              ];
+              final allSlots = slotCubit.state.slots;
 
               return allSlots.map((slot) {
                 final seatMembers = membersCubit.state.allMembers.where(
@@ -296,8 +305,7 @@ class XSeatCard extends StatelessWidget {
                 String statusLabel = 'Free';
                 if (isOccupied) {
                   statusColor = const Color(0xFFFF4C61); // occupied
-                  final isWholeDay = slot.id == 'default' || slot.name.toLowerCase().contains('complete');
-                  if (isWholeDay && !isExact) {
+                  if (!isExact) {
                     statusLabel = 'Unavail.';
                   } else {
                     statusLabel = member.fullName;

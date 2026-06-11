@@ -18,6 +18,8 @@ class AddMemberState {
   final String seatId;
   final String paymentMethod;
   final String selectedSlotId;
+  final DateTime joiningDate;
+  final DateTime expiryDate;
 
   AddMemberState({
     required this.isLoading,
@@ -26,6 +28,8 @@ class AddMemberState {
     required this.seatId,
     required this.paymentMethod,
     required this.selectedSlotId,
+    required this.joiningDate,
+    required this.expiryDate,
   });
 
   AddMemberState copyWith({
@@ -35,6 +39,8 @@ class AddMemberState {
     String? seatId,
     String? paymentMethod,
     String? selectedSlotId,
+    DateTime? joiningDate,
+    DateTime? expiryDate,
   }) {
     return AddMemberState(
       isLoading: isLoading ?? this.isLoading,
@@ -43,6 +49,8 @@ class AddMemberState {
       seatId: seatId ?? this.seatId,
       paymentMethod: paymentMethod ?? this.paymentMethod,
       selectedSlotId: selectedSlotId ?? this.selectedSlotId,
+      joiningDate: joiningDate ?? this.joiningDate,
+      expiryDate: expiryDate ?? this.expiryDate,
     );
   }
 }
@@ -55,10 +63,12 @@ class AddMemberCubit extends Cubit<AddMemberState> {
   AddMemberCubit() : super(AddMemberState(
     isLoading: false,
     gender: 'male',
-    planId: 'monthly',
+    planId: 'manual',
     seatId: '',
     paymentMethod: 'cash',
     selectedSlotId: 'default',
+    joiningDate: DateTime.now(),
+    expiryDate: DateTime.now().add(const Duration(days: 30)),
   )) {
     final activeSlotId = locator<SlotsCubit>().state.selectedSlotId;
     emit(state.copyWith(selectedSlotId: activeSlotId == 'all' ? 'default' : activeSlotId));
@@ -69,6 +79,8 @@ class AddMemberCubit extends Cubit<AddMemberState> {
   void setSeatId(String seatId) => emit(state.copyWith(seatId: seatId));
   void setPaymentMethod(String paymentMethod) => emit(state.copyWith(paymentMethod: paymentMethod));
   void setSelectedSlotId(String slotId) => emit(state.copyWith(selectedSlotId: slotId, seatId: ''));
+  void setJoiningDate(DateTime date) => emit(state.copyWith(joiningDate: date));
+  void setExpiryDate(DateTime date) => emit(state.copyWith(expiryDate: date));
 
   Future<void> saveMember(
     BuildContext context, {
@@ -78,25 +90,11 @@ class AddMemberCubit extends Cubit<AddMemberState> {
     required String email,
     required String address,
     required String notes,
+    required double fee,
   }) async {
     emit(state.copyWith(isLoading: true));
 
     try {
-      DateTime expiryDate = DateTime.now();
-      String planName = 'Monthly';
-      if (state.planId == 'quarterly') {
-        expiryDate = DateTime.now().add(const Duration(days: 90));
-        planName = 'Quarterly';
-      } else if (state.planId == 'half_yearly') {
-        expiryDate = DateTime.now().add(const Duration(days: 180));
-        planName = 'Half Yearly';
-      } else if (state.planId == 'annual') {
-        expiryDate = DateTime.now().add(const Duration(days: 365));
-        planName = 'Annual';
-      } else {
-        expiryDate = DateTime.now().add(const Duration(days: 30));
-      }
-
       final newMember = MemberModel(
         id: '',
         fullName: fullName.trim(),
@@ -109,10 +107,10 @@ class AddMemberCubit extends Cubit<AddMemberState> {
         seatId: state.seatId,
         seatNumber: state.seatId.isNotEmpty ? state.seatId : 'Unassigned',
         slotId: state.selectedSlotId,
-        joiningDate: DateTime.now(),
-        planId: state.planId,
-        planName: planName,
-        expiryDate: expiryDate,
+        joiningDate: state.joiningDate,
+        planId: 'manual',
+        planName: 'Manual Plan',
+        expiryDate: state.expiryDate,
         paymentStatus: 'paid',
         status: 'active',
         notes: notes.trim(),
@@ -122,23 +120,17 @@ class AddMemberCubit extends Cubit<AddMemberState> {
 
       final memberId = await _memberRepository.saveMemberRecord(newMember);
 
-      double amountPaid = 0.0;
-      if (state.planId == 'monthly') amountPaid = 1500;
-      else if (state.planId == 'quarterly') amountPaid = 4000;
-      else if (state.planId == 'half_yearly') amountPaid = 7500;
-      else if (state.planId == 'annual') amountPaid = 14000;
-
       final payment = PaymentModel(
         id: '',
         memberId: memberId,
         memberName: fullName.trim(),
-        amount: amountPaid,
+        amount: fee,
         paymentMethod: state.paymentMethod,
         type: 'new',
         slotId: state.selectedSlotId,
         date: DateTime.now(),
-        planId: state.planId,
-        planName: planName,
+        planId: 'manual',
+        planName: 'Manual Plan',
         notes: notes.trim(),
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),

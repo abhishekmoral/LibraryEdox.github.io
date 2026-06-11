@@ -9,58 +9,113 @@ import 'package:edox_library/common/widgets/containers/status_badge.dart';
 import 'package:edox_library/common/widgets/buttons/primary_button.dart';
 import 'package:edox_library/common/widgets/dialogs/confirm_dialog.dart';
 import 'package:edox_library/common/widgets/loaders/loader.dart';
-import 'package:edox_library/common/widgets/inputs/dropdown_field.dart';
+import 'package:edox_library/common/widgets/inputs/text_field.dart';
 import 'package:edox_library/features/members/models/member_model.dart';
 import 'package:edox_library/features/members/controllers/member_detail_cubit.dart';
 import 'package:edox_library/features/members/screens/edit_member/edit_member_screen.dart';
 import 'package:edox_library/features/dashboard/controllers/dashboard_cubit.dart';
 import 'package:edox_library/data/services/whatsapp_service.dart';
+import 'package:collection/collection.dart';
+import 'package:edox_library/features/slots/controllers/slots_cubit.dart';
+import 'package:edox_library/features/slots/models/slot_model.dart';
+import 'package:edox_library/data/repositories/payments/payment_repository.dart';
+import 'package:edox_library/features/payments/models/payment_model.dart';
 
 class MemberDetailScreen extends StatelessWidget {
   const MemberDetailScreen({super.key, required this.member});
   final MemberModel member;
 
   void _showRenewalBottomSheet(BuildContext context) {
-    String selectedPlan = 'monthly';
+    final baseDate = member.expiryDate.isBefore(DateTime.now()) ? DateTime.now() : member.expiryDate;
+    DateTime newExpiry = baseDate.add(const Duration(days: 30));
+    final feeCtrl = TextEditingController(text: '1500');
+    final dateCtrl = TextEditingController();
+
+    String formatDate(DateTime date) {
+      final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return '${date.day.toString().padLeft(2, '0')} ${months[date.month - 1]} ${date.year}';
+    }
+
+    dateCtrl.text = formatDate(newExpiry);
+
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (stateContext, setModalState) {
             return Padding(
-              padding: const EdgeInsets.all(XSizes.defaultSpace),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Renew Membership', style: Theme.of(stateContext).textTheme.headlineSmall),
-                  const SizedBox(height: XSizes.spaceBtwItems),
-                  XDropdownField<String>(
-                    label: 'Select Plan',
-                    value: selectedPlan,
-                    items: const [
-                      DropdownMenuItem(value: 'monthly', child: Text('Monthly - ₹1,500')),
-                      DropdownMenuItem(value: 'quarterly', child: Text('Quarterly - ₹4,000')),
-                      DropdownMenuItem(value: 'half_yearly', child: Text('Half Yearly - ₹7,500')),
-                      DropdownMenuItem(value: 'annual', child: Text('Annual - ₹14,000')),
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(stateContext).viewInsets.bottom,
+              ),
+              child: Container(
+                padding: const EdgeInsets.all(XSizes.defaultSpace),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).scaffoldBackgroundColor,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: XColors.softGrey, borderRadius: BorderRadius.circular(2)))),
+                      const SizedBox(height: XSizes.spaceBtwItems),
+                      Text('Renew Membership', style: Theme.of(stateContext).textTheme.headlineSmall),
+                      const SizedBox(height: 4),
+                      Text('Adjust expiry date and fee for renewal', style: Theme.of(stateContext).textTheme.bodySmall),
+                      const SizedBox(height: XSizes.spaceBtwSections),
+
+                      XTextField(
+                        controller: dateCtrl,
+                        label: 'New Expiry Date',
+                        prefixIcon: Iconsax.calendar,
+                        readOnly: true,
+                        onTap: () async {
+                          final DateTime? picked = await showDatePicker(
+                            context: stateContext,
+                            initialDate: newExpiry,
+                            firstDate: DateTime(2020),
+                            lastDate: DateTime(2100),
+                          );
+                          if (picked != null) {
+                            setModalState(() {
+                              newExpiry = picked;
+                              dateCtrl.text = formatDate(picked);
+                            });
+                          }
+                        },
+                      ),
+                      const SizedBox(height: XSizes.spaceBtwItems),
+
+                      XTextField(
+                        controller: feeCtrl,
+                        label: 'Renewal Fee (₹)',
+                        hint: 'Enter renewal amount',
+                        prefixIcon: Iconsax.wallet_3,
+                        keyboardType: TextInputType.number,
+                      ),
+                      const SizedBox(height: XSizes.spaceBtwSections),
+
+                      XPrimaryButton(
+                        text: 'Confirm Renewal',
+                        onPressed: () {
+                          final feeStr = feeCtrl.text.trim();
+                          final fee = double.tryParse(feeStr) ?? 0.0;
+                          if (feeStr.isEmpty || fee <= 0) {
+                            ScaffoldMessenger.of(stateContext).showSnackBar(
+                              const SnackBar(content: Text('Please enter a valid fee amount'), backgroundColor: XColors.error),
+                            );
+                            return;
+                          }
+                          Navigator.pop(dialogContext); // Close sheet
+                          context.read<MemberDetailCubit>().renewMembership(member, newExpiry, fee);
+                        },
+                      ),
+                      const SizedBox(height: XSizes.spaceBtwItems),
                     ],
-                    onChanged: (v) {
-                      if (v != null) {
-                        setModalState(() {
-                          selectedPlan = v;
-                        });
-                      }
-                    },
                   ),
-                  const SizedBox(height: XSizes.spaceBtwSections),
-                  XPrimaryButton(
-                    text: 'Confirm Renewal',
-                    onPressed: () {
-                      Navigator.pop(dialogContext); // Close sheet
-                      context.read<MemberDetailCubit>().renewMembership(member, selectedPlan);
-                    },
-                  ),
-                ],
+                ),
               ),
             );
           },
@@ -72,6 +127,18 @@ class MemberDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dark = XHelperFunctions.isDarkMode(context);
+    final slotsCubit = context.watch<SlotsCubit>();
+    final slot = slotsCubit.state.slots.firstWhereOrNull((s) => s.id == member.slotId) ?? 
+        slotsCubit.state.slots.firstWhereOrNull((s) => s.id == 'default') ??
+        SlotModel(
+          id: 'default',
+          name: 'Complete',
+          startTime: '12:00 AM',
+          endTime: '11:59 PM',
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        );
+    final slotText = '${slot.name} (${slot.startTime} - ${slot.endTime})';
 
     return BlocProvider(
       create: (context) => MemberDetailCubit(),
@@ -161,7 +228,9 @@ class MemberDetailScreen extends StatelessWidget {
                         Text(member.mobile, style: TextStyle(color: XColors.white.withValues(alpha: 0.8), fontSize: 14)),
                         const SizedBox(height: XSizes.sm),
                         XStatusBadge(
-                          text: member.status.replaceAll('_', ' '),
+                          text: (member.seatId.isEmpty || member.seatNumber == 'Unassigned')
+                              ? 'inactive'
+                              : member.status.replaceAll('_', ' '),
                           color: XColors.white,
                           textColor: XColors.primary,
                         ),
@@ -197,9 +266,10 @@ class MemberDetailScreen extends StatelessWidget {
                   ]),
                   const SizedBox(height: XSizes.spaceBtwItems),
 
-                  /// --- Seat Info
-                  _InfoSection(title: 'Seat Information', dark: dark, children: [
+                  /// --- Seat & Slot Info
+                  _InfoSection(title: 'Seat & Slot Information', dark: dark, children: [
                     _InfoRow('Seat Number', member.seatNumber.isEmpty ? 'Not Assigned' : member.seatNumber),
+                    _InfoRow('Slot / Shift', slotText),
                   ]),
                   const SizedBox(height: XSizes.spaceBtwItems),
 
@@ -210,6 +280,153 @@ class MemberDetailScreen extends StatelessWidget {
                     _InfoRow('Address', member.address.isEmpty ? 'N/A' : member.address),
                     if (member.notes.isNotEmpty) _InfoRow('Notes', member.notes),
                   ]),
+                  const SizedBox(height: XSizes.spaceBtwItems),
+
+                  /// --- Payment History
+                  FutureBuilder<List<PaymentModel>>(
+                    future: PaymentRepository.instance.getPaymentsByMember(member.id),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Padding(
+                          padding: EdgeInsets.symmetric(vertical: XSizes.spaceBtwItems),
+                          child: Center(child: CircularProgressIndicator(color: XColors.primary)),
+                        );
+                      }
+
+                      if (snapshot.hasError) {
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: XSizes.spaceBtwItems),
+                          child: Text(
+                            'Error loading payments: ${snapshot.error}',
+                            style: const TextStyle(color: XColors.error, fontSize: 13),
+                          ),
+                        );
+                      }
+
+                      final payments = snapshot.data ?? [];
+                      if (payments.isEmpty) {
+                        return const SizedBox.shrink();
+                      }
+
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Payment History',
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+                          ),
+                          const SizedBox(height: XSizes.sm),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(XSizes.md),
+                            decoration: BoxDecoration(
+                              color: dark ? XColors.darkCardBackground : XColors.white,
+                              borderRadius: BorderRadius.circular(XSizes.cardRadiusMd),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: XColors.primary.withValues(alpha: 0.04),
+                                  blurRadius: 12,
+                                )
+                              ],
+                            ),
+                            child: ListView.separated(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: payments.length,
+                              separatorBuilder: (context, index) => const Divider(height: 24, color: XColors.softGrey),
+                              itemBuilder: (context, index) {
+                                final payment = payments[index];
+                                final isNew = payment.type == 'new';
+                                
+                                Color methodColor;
+                                switch (payment.paymentMethod.toLowerCase()) {
+                                  case 'upi':
+                                    methodColor = Colors.teal;
+                                    break;
+                                  case 'bank_transfer':
+                                    methodColor = Colors.blue;
+                                    break;
+                                  default:
+                                    methodColor = Colors.orange;
+                                }
+
+                                return Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 18,
+                                      backgroundColor: (isNew ? XColors.primary : XColors.accent).withValues(alpha: 0.1),
+                                      child: Icon(
+                                        isNew ? Iconsax.user_add : Iconsax.refresh,
+                                        color: isNew ? XColors.primary : XColors.accent,
+                                        size: 16,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              Text(
+                                                isNew ? 'New Membership' : 'Renewal',
+                                                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                decoration: BoxDecoration(
+                                                  color: methodColor.withValues(alpha: 0.1),
+                                                  borderRadius: BorderRadius.circular(4),
+                                                ),
+                                                child: Text(
+                                                  payment.paymentMethod.toUpperCase(),
+                                                  style: TextStyle(
+                                                    color: methodColor,
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            XHelperFunctions.formatDate(payment.date),
+                                            style: Theme.of(context).textTheme.bodySmall,
+                                          ),
+                                          if (payment.notes.isNotEmpty) ...[
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              payment.notes,
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                fontStyle: FontStyle.italic,
+                                                color: dark ? Colors.grey[400] : Colors.grey[600],
+                                              ),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                    ),
+                                    Text(
+                                      XHelperFunctions.formatCurrency(payment.amount),
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                        color: XColors.primary,
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
                   const SizedBox(height: XSizes.spaceBtwSections),
 
                   /// --- Renew Button

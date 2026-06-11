@@ -14,6 +14,18 @@ class PaymentRepository {
   CollectionReference<Map<String, dynamic>> get _paymentsCollection =>
       _db.collection(XFirebaseConstants.librariesCollection).doc(_libraryId).collection(XFirebaseConstants.paymentsCollection);
 
+  // Get stream of all payment records sorted by date descending (in-memory sort)
+  Stream<List<PaymentModel>> getAllPaymentsStream() {
+    if (_libraryId.isEmpty) return const Stream.empty();
+    
+    return _paymentsCollection.snapshots().map((snapshot) {
+      final list = snapshot.docs.map((doc) => PaymentModel.fromSnapshot(doc)).toList();
+      // Sort in-memory descending
+      list.sort((a, b) => b.date.compareTo(a.date));
+      return list;
+    });
+  }
+
   // Save new payment record
   Future<String> savePaymentRecord(PaymentModel payment) async {
     try {
@@ -100,5 +112,22 @@ class PaymentRepository {
     }
     
     return monthlyData;
+  }
+
+  // Get all payments for a specific member sorted by date descending (in-memory sort to avoid Firestore index requirement)
+  Future<List<PaymentModel>> getPaymentsByMember(String memberId) async {
+    try {
+      if (_libraryId.isEmpty) return [];
+      final snapshot = await _paymentsCollection
+          .where('memberId', isEqualTo: memberId)
+          .get();
+      final payments = snapshot.docs.map((doc) => PaymentModel.fromSnapshot(doc)).toList();
+      payments.sort((a, b) => b.date.compareTo(a.date));
+      return payments;
+    } on FirebaseException catch (e) {
+      throw e.message ?? 'Failed to load payments.';
+    } catch (e) {
+      throw 'Something went wrong while fetching payments.';
+    }
   }
 }

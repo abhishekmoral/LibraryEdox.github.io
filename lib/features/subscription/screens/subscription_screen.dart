@@ -4,7 +4,9 @@ import 'package:edox_library/utils/constants/colors.dart';
 import 'package:edox_library/utils/constants/sizes.dart';
 import 'package:edox_library/utils/helpers/helper_function.dart';
 import 'package:edox_library/common/widgets/appbar/appbar.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:edox_library/features/subscription/controllers/razorpay_controller.dart';
+import 'package:edox_library/features/subscription/controllers/subscription_cubit.dart';
 
 class SubscriptionScreen extends StatefulWidget {
   const SubscriptionScreen({super.key});
@@ -37,32 +39,61 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         child: Column(
           children: [
             /// --- Current Plan
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(XSizes.defaultSpace),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(colors: [XColors.primary, Color(0xFF7B5AFF)], begin: Alignment.topLeft, end: Alignment.bottomRight),
-                borderRadius: BorderRadius.circular(XSizes.cardRadiusLg),
-              ),
-              child: Column(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(color: XColors.white.withValues(alpha: 0.2), shape: BoxShape.circle),
-                    child: const Icon(Iconsax.crown_1, color: XColors.white, size: 28),
+            BlocBuilder<SubscriptionCubit, SubscriptionState>(
+              builder: (context, subState) {
+                String planName = 'Loading...';
+                String subtitle = 'Checking subscription...';
+                String statusText = 'Unknown';
+                Color statusBgColor = XColors.white.withValues(alpha: 0.2);
+                Color statusTextColor = XColors.white;
+
+                if (subState is SubscriptionLoaded) {
+                  final sub = subState.subscription;
+                  planName = '${sub.planName} Plan';
+                  if (sub.isActive) {
+                    subtitle = '${sub.daysRemaining} days remaining';
+                    statusText = 'Active';
+                    statusBgColor = const Color(0xFF05CD99); // Active green
+                  } else {
+                    subtitle = 'Your plan has expired';
+                    statusText = 'Expired';
+                    statusBgColor = const Color(0xFFFF4C61); // Expired red
+                  }
+                } else if (subState is SubscriptionFailure) {
+                  planName = 'Error';
+                  subtitle = subState.message;
+                  statusText = 'Failed';
+                  statusBgColor = XColors.error;
+                }
+
+                return Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(XSizes.defaultSpace),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(colors: [XColors.primary, Color(0xFF7B5AFF)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+                    borderRadius: BorderRadius.circular(XSizes.cardRadiusLg),
                   ),
-                  const SizedBox(height: XSizes.sm),
-                  const Text('Trial Plan', style: TextStyle(color: XColors.white, fontSize: 24, fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 4),
-                  Text('30 days remaining', style: TextStyle(color: XColors.white.withValues(alpha: 0.8), fontSize: 14)),
-                  const SizedBox(height: XSizes.spaceBtwItems),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                    decoration: BoxDecoration(color: XColors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(20)),
-                    child: const Text('Active', style: TextStyle(color: XColors.white, fontWeight: FontWeight.w600, fontSize: 13)),
+                  child: Column(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(color: XColors.white.withValues(alpha: 0.2), shape: BoxShape.circle),
+                        child: const Icon(Iconsax.crown_1, color: XColors.white, size: 28),
+                      ),
+                      const SizedBox(height: XSizes.sm),
+                      Text(planName, style: const TextStyle(color: XColors.white, fontSize: 24, fontWeight: FontWeight.w700)),
+                      const SizedBox(height: 4),
+                      Text(subtitle, style: TextStyle(color: XColors.white.withValues(alpha: 0.8), fontSize: 14)),
+                      const SizedBox(height: XSizes.spaceBtwItems),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                        decoration: BoxDecoration(color: statusBgColor, borderRadius: BorderRadius.circular(20)),
+                        child: Text(statusText, style: TextStyle(color: statusTextColor, fontWeight: FontWeight.w600, fontSize: 13)),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                );
+              },
             ),
             const SizedBox(height: XSizes.spaceBtwSections),
 
@@ -73,7 +104,14 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             _PlanTile(
               title: 'Basic',
               price: '₹499/mo',
-              features: ['Up to 50 seats', 'Up to 100 members', 'WhatsApp reminders', 'Basic reports'],
+              features: const [
+                'Unlimited seats',
+                'Unlimited members',
+                'WhatsApp & SMS reminders',
+                'Advanced analytics',
+                'Advanced seat layout',
+                'Premium 24/7 support',
+              ],
               color: XColors.accent,
               dark: dark,
               onSelect: () => RazorpayService.instance.openCheckout(context, 'Basic', 499.0),
@@ -82,8 +120,15 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
 
             _PlanTile(
               title: 'Premium',
-              price: '₹999/mo',
-              features: ['Unlimited seats', 'Unlimited members', 'WhatsApp + SMS', 'Advanced analytics', 'Priority support', 'Custom branding'],
+              price: '₹999 for 90 days',
+              features: const [
+                'Unlimited seats',
+                'Unlimited members',
+                'WhatsApp & SMS reminders',
+                'Advanced analytics',
+                'Advanced seat layout',
+                'Premium 24/7 support',
+              ],
               color: XColors.primary,
               dark: dark,
               recommended: true,

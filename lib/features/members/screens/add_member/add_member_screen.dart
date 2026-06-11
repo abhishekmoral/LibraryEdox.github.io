@@ -13,7 +13,6 @@ import 'package:edox_library/common/widgets/inputs/dropdown_field.dart';
 
 import 'package:edox_library/features/members/controllers/add_member_cubit.dart';
 import 'package:edox_library/features/slots/controllers/slots_cubit.dart';
-import 'package:edox_library/features/slots/models/slot_model.dart';
 import 'package:edox_library/features/seats/controllers/seats_cubit.dart';
 
 class AddMemberScreen extends StatelessWidget {
@@ -42,7 +41,19 @@ class _AddMemberFormState extends State<_AddMemberForm> {
   final email = TextEditingController();
   final address = TextEditingController();
   final notes = TextEditingController();
+  final startDateController = TextEditingController();
+  final endDateController = TextEditingController();
+  final feeController = TextEditingController(text: '1500');
   final formKey = GlobalKey<FormState>();
+
+  @override
+  void initState() {
+    super.initState();
+    final now = DateTime.now();
+    final future = now.add(const Duration(days: 30));
+    startDateController.text = _formatDate(now);
+    endDateController.text = _formatDate(future);
+  }
 
   @override
   void dispose() {
@@ -52,7 +63,47 @@ class _AddMemberFormState extends State<_AddMemberForm> {
     email.dispose();
     address.dispose();
     notes.dispose();
+    startDateController.dispose();
+    endDateController.dispose();
+    feeController.dispose();
     super.dispose();
+  }
+
+  String _formatDate(DateTime date) {
+    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return '${date.day.toString().padLeft(2, '0')} ${months[date.month - 1]} ${date.year}';
+  }
+
+  Future<void> _selectStartDate(BuildContext context) async {
+    final cubit = context.read<AddMemberCubit>();
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: cubit.state.joiningDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2100),
+    );
+    if (picked != null) {
+      cubit.setJoiningDate(picked);
+      setState(() {
+        startDateController.text = _formatDate(picked);
+      });
+    }
+  }
+
+  Future<void> _selectEndDate(BuildContext context) async {
+    final cubit = context.read<AddMemberCubit>();
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: cubit.state.expiryDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2100),
+    );
+    if (picked != null) {
+      cubit.setExpiryDate(picked);
+      setState(() {
+        endDateController.text = _formatDate(picked);
+      });
+    }
   }
 
   @override
@@ -65,17 +116,7 @@ class _AddMemberFormState extends State<_AddMemberForm> {
       appBar: const XAppBar(title: Text('Add Member')),
       body: BlocBuilder<AddMemberCubit, AddMemberState>(
         builder: (context, state) {
-          final actualSlots = [
-            SlotModel(
-              id: 'default',
-              name: 'Complete',
-              startTime: '12:00 AM',
-              endTime: '11:59 PM',
-              createdAt: DateTime.now(),
-              updatedAt: DateTime.now(),
-            ),
-            ...slotsCubit.state.slots,
-          ];
+          final actualSlots = slotsCubit.state.slots;
 
           final allSeatsForSlot = seatsCubit.getResolvedSeatsForSlot(state.selectedSlotId);
           // Keep only seats that are free (not occupied and not under maintenance)
@@ -95,7 +136,7 @@ class _AddMemberFormState extends State<_AddMemberForm> {
           final seatDropdownValue = currentSeat.isNotEmpty &&
                   availableSeats.any((s) => s.seatNumber == currentSeat)
               ? currentSeat
-              : null;
+              : ''; // '' represents Unassigned
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(XSizes.defaultSpace),
@@ -160,18 +201,38 @@ class _AddMemberFormState extends State<_AddMemberForm> {
                   ),
                   const SizedBox(height: XSizes.spaceBtwItems),
 
-                  XDropdownField<String>(
-                    label: 'Membership Plan',
-                    prefixIcon: Iconsax.calendar_1,
-                    value: state.planId,
-                    items: const [
-                      DropdownMenuItem(value: 'monthly', child: Text('Monthly - ₹1,500')),
-                      DropdownMenuItem(value: 'quarterly', child: Text('Quarterly - ₹4,000')),
-                      DropdownMenuItem(value: 'half_yearly', child: Text('Half Yearly - ₹7,500')),
-                      DropdownMenuItem(value: 'annual', child: Text('Annual - ₹14,000')),
-                    ],
-                    onChanged: (v) {
-                      if (v != null) context.read<AddMemberCubit>().setPlanId(v);
+                  XTextField(
+                    controller: startDateController,
+                    label: 'Start Date',
+                    prefixIcon: Iconsax.calendar,
+                    readOnly: true,
+                    onTap: () => _selectStartDate(context),
+                  ),
+                  const SizedBox(height: XSizes.spaceBtwItems),
+
+                  XTextField(
+                    controller: endDateController,
+                    label: 'End Date',
+                    prefixIcon: Iconsax.calendar,
+                    readOnly: true,
+                    onTap: () => _selectEndDate(context),
+                  ),
+                  const SizedBox(height: XSizes.spaceBtwItems),
+
+                  XTextField(
+                    controller: feeController,
+                    label: 'Fee Amount (₹)',
+                    hint: 'Enter fee amount',
+                    prefixIcon: Iconsax.wallet_3,
+                    keyboardType: TextInputType.number,
+                    validator: (val) {
+                      if (val == null || val.trim().isEmpty) {
+                        return 'Please enter a fee amount';
+                      }
+                      if (double.tryParse(val.trim()) == null) {
+                        return 'Please enter a valid number';
+                      }
+                      return null;
                     },
                   ),
                   const SizedBox(height: XSizes.spaceBtwItems),
@@ -180,22 +241,44 @@ class _AddMemberFormState extends State<_AddMemberForm> {
                     label: 'Assign Seat',
                     prefixIcon: Iconsax.grid_2,
                     value: seatDropdownValue,
-                    items: availableSeats.map((seat) {
-                      final freeSlots = seatsCubit.getFreeSlotNamesForSeat(seat.seatNumber);
-                      final labelText = '${seat.seatNumber} (Free: ${freeSlots.join(", ")})';
-
-                      return DropdownMenuItem(
-                        value: seat.seatNumber, 
+                    items: [
+                      const DropdownMenuItem(
+                        value: '',
                         child: Text(
-                          labelText,
-                          style: const TextStyle(
+                          'Unassigned (No Seat)',
+                          style: TextStyle(
                             fontWeight: FontWeight.w600,
+                            color: XColors.textSecondary,
                           ),
                         ),
-                      );
-                    }).toList(),
+                      ),
+                      ...availableSeats.map((seat) {
+                        final freeSlotNames = seatsCubit.getFreeSlotNamesForSeat(seat.seatNumber);
+                        String freeText;
+                        if (freeSlotNames.length == slotsCubit.state.slots.length) {
+                          freeText = 'All Shifts';
+                        } else {
+                          freeText = freeSlotNames.join(', ');
+                        }
+                        final labelText = '${seat.seatNumber} (Free: $freeText)';
+
+                        return DropdownMenuItem(
+                          value: seat.seatNumber, 
+                          child: Text(
+                            labelText,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        );
+                      }),
+                    ],
                     onChanged: (v) {
                       if (v == null) return;
+                      if (v.isEmpty) {
+                        context.read<AddMemberCubit>().setSeatId('');
+                        return;
+                      }
                       final chosenSeat = availableSeats.firstWhereOrNull((s) => s.seatNumber == v);
                       if (chosenSeat == null) {
                         ScaffoldMessenger.of(context).showSnackBar(
@@ -243,6 +326,7 @@ class _AddMemberFormState extends State<_AddMemberForm> {
                           email: email.text,
                           address: address.text,
                           notes: notes.text,
+                          fee: double.parse(feeController.text.trim()),
                         );
                       }
                     },

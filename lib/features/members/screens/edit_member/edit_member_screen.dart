@@ -12,6 +12,7 @@ import 'package:edox_library/common/widgets/inputs/dropdown_field.dart';
 import 'package:edox_library/features/members/models/member_model.dart';
 import 'package:edox_library/features/members/controllers/edit_member_cubit.dart';
 import 'package:edox_library/features/seats/controllers/seats_cubit.dart';
+import 'package:edox_library/features/slots/controllers/slots_cubit.dart';
 
 class EditMemberScreen extends StatelessWidget {
   const EditMemberScreen({super.key, required this.member});
@@ -68,6 +69,7 @@ class _EditMemberFormState extends State<_EditMemberForm> {
   @override
   Widget build(BuildContext context) {
     final seatsCubit = context.watch<SeatsCubit>();
+    final slotsCubit = context.watch<SlotsCubit>();
     final editCubit = context.read<EditMemberCubit>();
 
     return Scaffold(
@@ -85,7 +87,7 @@ class _EditMemberFormState extends State<_EditMemberForm> {
           final seatDropdownValue = currentSeat.isNotEmpty &&
                   availableSeats.any((s) => s.seatNumber == currentSeat)
               ? currentSeat
-              : null;
+              : ''; // '' represents Unassigned
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(XSizes.defaultSpace),
@@ -118,28 +120,50 @@ class _EditMemberFormState extends State<_EditMemberForm> {
                     label: 'Assign Seat',
                     prefixIcon: Iconsax.grid_2,
                     value: seatDropdownValue,
-                    items: availableSeats.map((seat) {
-                      final freeSlots = seatsCubit.getFreeSlotNamesForSeat(
-                        seat.seatNumber,
-                        excludeMemberId: editCubit.originalMember.id,
-                      );
-                      final isCurrentSeat = seat.seatNumber == editCubit.originalMember.seatNumber;
-                      final labelText = isCurrentSeat
-                          ? '${seat.seatNumber} (Current Seat - Free: ${freeSlots.join(", ")})'
-                          : '${seat.seatNumber} (Free: ${freeSlots.join(", ")})';
-
-                      return DropdownMenuItem(
-                        value: seat.seatNumber, 
+                    items: [
+                      const DropdownMenuItem(
+                        value: '',
                         child: Text(
-                          labelText,
-                          style: const TextStyle(
+                          'Unassigned (No Seat)',
+                          style: TextStyle(
                             fontWeight: FontWeight.w600,
+                            color: XColors.textSecondary,
                           ),
                         ),
-                      );
-                    }).toList(),
+                      ),
+                      ...availableSeats.map((seat) {
+                        final freeSlotNames = seatsCubit.getFreeSlotNamesForSeat(
+                          seat.seatNumber,
+                          excludeMemberId: editCubit.originalMember.id,
+                        );
+                        String freeText;
+                        if (freeSlotNames.length == slotsCubit.state.slots.length) {
+                          freeText = 'All Shifts';
+                        } else {
+                          freeText = freeSlotNames.join(', ');
+                        }
+                        final isCurrentSeat = seat.seatNumber == editCubit.originalMember.seatNumber;
+                        final labelText = isCurrentSeat
+                            ? '${seat.seatNumber} (Current Seat - Free: $freeText)'
+                            : '${seat.seatNumber} (Free: $freeText)';
+
+                        return DropdownMenuItem(
+                          value: seat.seatNumber, 
+                          child: Text(
+                            labelText,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        );
+                      }),
+                    ],
                     onChanged: (v) {
                       if (v == null) return;
+                      if (v.isEmpty) {
+                        context.read<EditMemberCubit>().setSeatId('');
+                        return;
+                      }
                       final chosenSeat = availableSeats.firstWhereOrNull((s) => s.seatNumber == v);
                       if (chosenSeat == null) {
                         ScaffoldMessenger.of(context).showSnackBar(

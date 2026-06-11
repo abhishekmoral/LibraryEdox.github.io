@@ -15,6 +15,8 @@ import 'package:edox_library/features/slots/controllers/slots_cubit.dart';
 import 'package:edox_library/features/slots/models/slot_model.dart';
 import 'package:edox_library/data/repositories/authentication/authentication_repository.dart';
 import 'package:edox_library/features/members/controllers/members_cubit.dart';
+import 'package:edox_library/features/members/models/member_model.dart';
+import 'package:edox_library/features/members/screens/member_detail/member_detail_screen.dart';
 
 class SeatsOverviewScreen extends StatefulWidget {
   const SeatsOverviewScreen({super.key});
@@ -428,6 +430,14 @@ class _SeatsOverviewScreenState extends State<SeatsOverviewScreen> {
     String status = seat.status;
     final dark = XHelperFunctions.isDarkMode(context);
 
+    final membersCubit = context.read<MembersCubit>();
+    final seatMembers = membersCubit.state.allMembers.where(
+      (m) => m.seatNumber == seat.seatNumber && m.status == 'active'
+    ).toList();
+    final memberNames = seatMembers.isNotEmpty
+        ? seatMembers.map((m) => m.fullName).join(' & ')
+        : seat.memberName;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -496,7 +506,7 @@ class _SeatsOverviewScreenState extends State<SeatsOverviewScreen> {
                           const SizedBox(width: XSizes.sm),
                           Expanded(
                             child: Text(
-                              'This seat is currently occupied by ${seat.memberName}. Its status cannot be changed directly.',
+                              'This seat is currently occupied by $memberNames. Its status cannot be changed directly.',
                               style: const TextStyle(fontSize: 12, color: XColors.warning),
                             ),
                           ),
@@ -552,6 +562,7 @@ class _SeatsOverviewScreenState extends State<SeatsOverviewScreen> {
                             final item = list[idx];
                             final isOccupied = item['status'] == 'occupied';
                             final isMaint = item['status'] == 'maintenance';
+                            final member = item['member'] as MemberModel?;
 
                             Color statusColor = const Color(0xFF05CD99); // available
                             IconData statusIcon = Iconsax.tick_circle;
@@ -569,7 +580,7 @@ class _SeatsOverviewScreenState extends State<SeatsOverviewScreen> {
                               infoText = 'Maintenance';
                             }
 
-                            return Padding(
+                            final Widget rowContent = Padding(
                               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                               child: Row(
                                 children: [
@@ -619,9 +630,35 @@ class _SeatsOverviewScreenState extends State<SeatsOverviewScreen> {
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
+                                  if (member != null) ...[
+                                    const SizedBox(width: 8),
+                                    Icon(
+                                      Icons.chevron_right,
+                                      size: 14,
+                                      color: dark ? XColors.textSecondary : XColors.darkGrey,
+                                    ),
+                                  ],
                                 ],
                               ),
                             );
+
+                            if (member != null) {
+                              return InkWell(
+                                onTap: () {
+                                  Navigator.pop(context); // Close Edit Seat Sheet
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => MemberDetailScreen(member: member),
+                                    ),
+                                  );
+                                },
+                                borderRadius: BorderRadius.circular(16),
+                                child: rowContent,
+                              );
+                            }
+
+                            return rowContent;
                           },
                         ),
                       );
@@ -679,17 +716,21 @@ class _SeatsOverviewScreenState extends State<SeatsOverviewScreen> {
   Future<List<Map<String, dynamic>>> _getSeatOccupancyBreakdown(BuildContext context, String seatNumber) async {
     final libraryId = AuthenticationRepository.instance.currentUser?.uid ?? '';
     final slotsCubit = context.read<SlotsCubit>();
-    final slots = [
-      SlotModel(
-        id: 'default',
-        name: 'Complete',
-        startTime: '12:00 AM',
-        endTime: '11:59 PM',
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      ),
-      ...slotsCubit.state.slots,
-    ];
+    final loadedSlots = slotsCubit.state.slots;
+    final List<SlotModel> slots = [];
+    if (!loadedSlots.any((s) => s.id == 'default')) {
+      slots.add(
+        SlotModel(
+          id: 'default',
+          name: 'Complete Shift',
+          startTime: '12:00 AM',
+          endTime: '11:59 PM',
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
+      );
+    }
+    slots.addAll(loadedSlots);
 
     // Fetch all members assigned to this seat number in this library
     final membersSnapshot = await FirebaseFirestore.instance
@@ -750,9 +791,9 @@ class _SeatsOverviewScreenState extends State<SeatsOverviewScreen> {
 
       if (memberDoc != null) {
         final memberData = memberDoc.data()!;
-        final isWholeDay = slot.id == 'default' || slot.name.toLowerCase().contains('complete');
+        final memberObj = MemberModel.fromSnapshot(memberDoc);
         
-        if (isWholeDay && !isExact) {
+        if (!isExact) {
           breakdown.add({
             'slotName': slot.name,
             'timing': '${slot.startTime} - ${slot.endTime}',
@@ -760,6 +801,7 @@ class _SeatsOverviewScreenState extends State<SeatsOverviewScreen> {
             'memberName': 'Unavailable',
             'memberMobile': '',
             'memberExpiry': null,
+            'member': memberObj,
           });
         } else {
           breakdown.add({
@@ -769,6 +811,7 @@ class _SeatsOverviewScreenState extends State<SeatsOverviewScreen> {
             'memberName': memberData['fullName'] ?? '',
             'memberMobile': memberData['mobile'] ?? '',
             'memberExpiry': memberData['expiryDate'],
+            'member': memberObj,
           });
         }
       } else {
@@ -779,6 +822,7 @@ class _SeatsOverviewScreenState extends State<SeatsOverviewScreen> {
           'memberName': '',
           'memberMobile': '',
           'memberExpiry': null,
+          'member': null,
         });
       }
     }
@@ -937,17 +981,7 @@ class _SeatListTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final slotsCubit = context.watch<SlotsCubit>();
     final membersCubit = context.watch<MembersCubit>();
-    final allSlots = [
-      SlotModel(
-        id: 'default',
-        name: 'Complete',
-        startTime: '12:00 AM',
-        endTime: '11:59 PM',
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      ),
-      ...slotsCubit.state.slots,
-    ];
+    final allSlots = slotsCubit.state.slots;
 
     return GestureDetector(
       onTap: onTap,

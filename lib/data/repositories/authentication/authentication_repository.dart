@@ -41,6 +41,32 @@ class AuthenticationRepository {
     }
   }
 
+  Future<void> updatePassword(String currentPassword, String newPassword) async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null || user.email == null) {
+        throw 'No authenticated user found.';
+      }
+
+      // Re-authenticate user first
+      AuthCredential credential = EmailAuthProvider.credential(
+        email: user.email!,
+        password: currentPassword,
+      );
+      await user.reauthenticateWithCredential(credential);
+
+      // Update password
+      await user.updatePassword(newPassword);
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'wrong-password' || e.code == 'invalid-credential') {
+        throw 'Your current password is wrong';
+      }
+      throw e.message ?? 'Failed to update password.';
+    } catch (e) {
+      throw 'An unexpected error occurred. Please try again.';
+    }
+  }
+
   Future<void> logout() async {
     try {
       await _auth.signOut();
